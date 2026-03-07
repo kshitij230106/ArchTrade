@@ -7,8 +7,10 @@
 #include "PipelineSimulator.h"
 #include "SimulationResult.h"
 #include "Workload.h"
+#include <iomanip>
 #include <iostream>
 #include <limits>
+#include <string>
 
 static void printMenu() {
     std::cout << "\n========== ArchTrade - Computer Architecture Simulator ==========\n\n";
@@ -25,7 +27,8 @@ static void printMenu() {
     std::cout << "    Cache:           11. Direct Mapped  12. Set Associative\n";
     std::cout << "    I/O:             13. Polling  14. DMA\n";
     std::cout << "\n   15. Run simulation\n";
-    std::cout << "    0. Exit\n";
+    std::cout << "   16. Compare two architecture configurations\n";
+    std::cout << "    0. Exit   99. Show menu again\n";
     std::cout << "\n================================================================\n";
 }
 
@@ -45,18 +48,60 @@ static void printResult(const SimulationResult& r, const std::string& workloadNa
     std::cout << "\n  ----------------------------------------\n\n";
 }
 
+/** Returns the workload for menu option 1-6. */
+static Workload getWorkloadForOption(int option) {
+    if (option <= 3)
+        return Workload::create(static_cast<WorkloadType>(option - 1));
+    if (option == 4) return Workload::createBubbleSort();
+    if (option == 5) return Workload::createRandomMemory();
+    return Workload::createIOProcessing();
+}
+
+/** Prompt for one architecture configuration (RISC/CISC, pipeline, cache, I/O). */
+static ArchitectureConfig promptForConfig(const char* configLabel) {
+    ArchitectureConfig c;
+    int val;
+    std::cout << "\n  --- " << configLabel << " ---\n";
+    std::cout << "    RISC (7) or CISC (8)? "; std::cin >> val; c.isRISC = (val == 7);
+    std::cout << "    Single Cycle (9) or 5-Stage (10)? "; std::cin >> val; c.pipelineDepth = (val == 10) ? 5 : 1;
+    std::cout << "    Direct Mapped (11) or Set Associative (12)? "; std::cin >> val; c.cacheType = (val == 12) ? "SetAssociative" : "DirectMapped";
+    std::cout << "    Polling (13) or DMA (14)? "; std::cin >> val; c.useDMA = (val == 14);
+    return c;
+}
+
+static void printComparisonResults(const SimulationResult& a, const SimulationResult& b) {
+    std::cout << "\n  ---------- Comparison Results ----------\n\n";
+    std::cout << "  " << std::left << std::setw(24) << "Metric" << std::right << std::setw(14) << "Config A" << std::setw(14) << "Config B" << "\n\n";
+    std::cout << "  " << std::left << std::setw(24) << "Instructions" << std::right << std::setw(14) << a.instructionsExecuted << std::setw(14) << b.instructionsExecuted << "\n";
+    std::cout << "  " << std::left << std::setw(24) << "Total Cycles" << std::right << std::setw(14) << a.totalCycles << std::setw(14) << b.totalCycles << "\n";
+    std::cout.precision(2);
+    std::cout << std::fixed;
+    std::cout << "  " << std::left << std::setw(24) << "CPI" << std::right << std::setw(14) << a.cpi << std::setw(14) << b.cpi << "\n";
+    std::cout << "  " << std::left << std::setw(24) << "Pipeline Stalls" << std::right << std::setw(14) << a.pipelineStalls << std::setw(14) << b.pipelineStalls << "\n";
+    std::cout << "  " << std::left << std::setw(24) << "Cache Hits" << std::right << std::setw(14) << a.cacheHits << std::setw(14) << b.cacheHits << "\n";
+    std::cout << "  " << std::left << std::setw(24) << "Cache Misses" << std::right << std::setw(14) << a.cacheMisses << std::setw(14) << b.cacheMisses << "\n";
+    std::cout << "  " << std::left << std::setw(24) << "CPU Idle Cycles" << std::right << std::setw(14) << a.cpuIdleCycles << std::setw(14) << b.cpuIdleCycles << "\n";
+    std::cout << "\n  ----------------------------------------\n\n";
+}
+
 int main() {
     int selectedWorkloadOption = 1;  // 1-6: which workload is selected
     ArchitectureConfig config;
 
-    for (;;) {
-        printMenu();
-        std::cout << "  Choice: ";
+    printMenu();
+
+    while (true) {
+        std::cout << "\n  Enter another choice (0 to exit, 99 to show menu again): ";
         int choice = -1;
         if (!(std::cin >> choice)) {
             std::cin.clear();
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::cout << "  Invalid input.\n";
+            continue;
+        }
+
+        if (choice == 99) {
+            printMenu();
             continue;
         }
 
@@ -121,19 +166,25 @@ int main() {
             std::cout << "  I/O: DMA.\n";
             break;
         case 15: {
-            Workload w;
-            if (selectedWorkloadOption <= 3) {
-                w = Workload::create(static_cast<WorkloadType>(selectedWorkloadOption - 1));
-            } else if (selectedWorkloadOption == 4) {
-                w = Workload::createBubbleSort();
-            } else if (selectedWorkloadOption == 5) {
-                w = Workload::createRandomMemory();
-            } else {
-                w = Workload::createIOProcessing();
-            }
+            Workload w = getWorkloadForOption(selectedWorkloadOption);
             PipelineSimulator sim;
             SimulationResult result = sim.run(w, config);
             printResult(result, w.name);
+            break;
+        }
+        case 16: {
+            std::cout << "  Select workload (1-6): ";
+            int wopt = 1;
+            std::cin >> wopt;
+            if (wopt < 1 || wopt > 6) wopt = 1;
+            Workload w = getWorkloadForOption(wopt);
+            ArchitectureConfig configA = promptForConfig("Configuration A");
+            ArchitectureConfig configB = promptForConfig("Configuration B");
+            PipelineSimulator sim;
+            SimulationResult resultA = sim.run(w, configA);
+            SimulationResult resultB = sim.run(w, configB);
+            std::cout << "\n  Workload: " << w.name << "\n";
+            printComparisonResults(resultA, resultB);
             break;
         }
         default:
