@@ -13,12 +13,10 @@
 /**
  * Workload types for educational comparison:
  * - Fibonacci: branch-heavy (many BRANCH instructions)
- * - MatrixMultiply: memory-heavy (many LOAD/STORE)
  * - ArraySum: good cache locality (sequential LOAD/STORE, many ALU)
  */
 enum class WorkloadType {
     Fibonacci,
-    MatrixMultiply,
     ArraySum
 };
 

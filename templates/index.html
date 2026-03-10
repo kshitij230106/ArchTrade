@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArchTrade – Computer Architecture Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="stage">
+        <!-- Animated blur blobs (nebula) -->
+        <div class="blob-layer" aria-hidden="true">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+            <div class="blob blob-3"></div>
+            <div class="blob blob-4"></div>
+            <div class="blob blob-5"></div>
+        </div>
+        <!-- Fine-grain noise overlay -->
+        <div class="noise" aria-hidden="true"></div>
+
+        <div class="content">
+            <h1>ArchTrade</h1>
+            <p class="tagline">Computer Architecture Simulator</p>
+
+            <!-- ─── Config A (existing single-run form) ─── -->
+            <p class="config-label" id="configALabel" style="display:none;">Configuration A</p>
+
+            <div class="artifact-tilt" id="artifactTilt">
+                <div class="artifact-beam"></div>
+                <div class="artifact">
+                    <form id="simForm">
+                        <label for="workload">Workload</label>
+                        <select id="workload" name="workload" required>
+                            <option value="fibonacci">Fibonacci</option>
+                            <option value="array_sum">Array Sum</option>
+                            <option value="bubble_sort">Bubble Sort</option>
+                            <option value="random_memory_access">Random Memory Access</option>
+                            <option value="io_processing">IO Processing</option>
+                        </select>
+
+                        <label for="instruction_set">Instruction Set</label>
+                        <select id="instruction_set" name="instruction_set" required>
+                            <option value="risc">RISC</option>
+                            <option value="cisc">CISC</option>
+                        </select>
+
+                        <label for="pipeline">Pipeline</label>
+                        <select id="pipeline" name="pipeline" required>
+                            <option value="single_cycle">Single Cycle</option>
+                            <option value="5_stage">5 Stage</option>
+                        </select>
+
+                        <label for="cache">Cache</label>
+                        <select id="cache" name="cache" required>
+                            <option value="direct_mapped">DirectMapped</option>
+                            <option value="set_associative">SetAssociative</option>
+                        </select>
+
+                        <label for="io_type">IO Method</label>
+                        <select id="io_type" name="io_type" required>
+                            <option value="polling">Polling</option>
+                            <option value="dma">DMA</option>
+                        </select>
+
+                        <div class="form-actions">
+                            <button type="submit" id="runBtn"><span>Run Simulation</span></button>
+                            <button type="button" id="compareBtn"><span>Compare Configurations</span></button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ─── Config B panel (hidden until Compare is clicked) ─── -->
+            <p class="config-label" id="configBLabel" style="display:none;">Configuration B</p>
+
+            <div class="artifact-tilt" id="artifactTiltB" style="display:none; margin-top:1rem;">
+                <div class="artifact-beam"></div>
+                <div class="artifact">
+                    <form id="simFormB">
+                        <label for="workload_b">Workload</label>
+                        <select id="workload_b" name="workload_b" required>
+                            <option value="fibonacci">Fibonacci</option>
+                            <option value="array_sum">Array Sum</option>
+                            <option value="bubble_sort">Bubble Sort</option>
+                            <option value="random_memory_access">Random Memory Access</option>
+                            <option value="io_processing">IO Processing</option>
+                        </select>
+
+                        <label for="instruction_set_b">Instruction Set</label>
+                        <select id="instruction_set_b" name="instruction_set_b" required>
+                            <option value="risc">RISC</option>
+                            <option value="cisc">CISC</option>
+                        </select>
+
+                        <label for="pipeline_b">Pipeline</label>
+                        <select id="pipeline_b" name="pipeline_b" required>
+                            <option value="single_cycle">Single Cycle</option>
+                            <option value="5_stage">5 Stage</option>
+                        </select>
+
+                        <label for="cache_b">Cache</label>
+                        <select id="cache_b" name="cache_b" required>
+                            <option value="direct_mapped">DirectMapped</option>
+                            <option value="set_associative">SetAssociative</option>
+                        </select>
+
+                        <label for="io_type_b">IO Method</label>
+                        <select id="io_type_b" name="io_type_b" required>
+                            <option value="polling">Polling</option>
+                            <option value="dma">DMA</option>
+                        </select>
+
+                        <div class="form-actions">
+                            <button type="button" id="runCompareBtn"><span>Run Comparison</span></button>
+                            <button type="button" id="cancelCompareBtn"><span>Cancel</span></button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ─── Single-run result ─── -->
+            <h2 id="singleResultTitle">Simulation results</h2>
+            <pre id="result">No results yet. Click "Run Simulation" to run.</pre>
+
+            <!-- ─── Comparison table ─── -->
+            <h2 id="compareTitle" style="display:none;">Configuration Comparison</h2>
+            <pre id="compareError" class="error" style="display:none;"></pre>
+
+            <table id="compareTable" class="comparison-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Config A</th>
+                        <th>Config B</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Workload</td>
+                        <td id="a_workload"></td>
+                        <td id="b_workload"></td>
+                    </tr>
+                    <tr>
+                        <td>Instruction Set</td>
+                        <td id="a_instruction"></td>
+                        <td id="b_instruction"></td>
+                    </tr>
+                    <tr>
+                        <td>Pipeline</td>
+                        <td id="a_pipeline"></td>
+                        <td id="b_pipeline"></td>
+                    </tr>
+                    <tr>
+                        <td>Cache</td>
+                        <td id="a_cache"></td>
+                        <td id="b_cache"></td>
+                    </tr>
+                    <tr>
+                        <td>IO Method</td>
+                        <td id="a_io"></td>
+                        <td id="b_io"></td>
+                    </tr>
+                    <tr>
+                        <td>Cycles</td>
+                        <td id="a_cycles"></td>
+                        <td id="b_cycles"></td>
+                    </tr>
+                    <tr>
+                        <td>CPI</td>
+                        <td id="a_cpi"></td>
+                        <td id="b_cpi"></td>
+                    </tr>
+                    <tr>
+                        <td>Cache Hits</td>
+                        <td id="a_hits"></td>
+                        <td id="b_hits"></td>
+                    </tr>
+                    <tr>
+                        <td>Cache Misses</td>
+                        <td id="a_misses"></td>
+                        <td id="b_misses"></td>
+                    </tr>
+                    <tr>
+                        <td>CPU Idle Cycles</td>
+                        <td id="a_idle"></td>
+                        <td id="b_idle"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+
+        /* ── helpers ── */
+        function val(id) { return document.getElementById(id).value; }
+        function el(id)  { return document.getElementById(id); }
+
+        function friendlyLabel(raw) {
+            const map = {
+                fibonacci:            'Fibonacci',
+                array_sum:            'Array Sum',
+                bubble_sort:          'Bubble Sort',
+                random_memory_access: 'Random Memory Access',
+                io_processing:        'IO Processing',
+                risc:                 'RISC',
+                cisc:                 'CISC',
+                single_cycle:         'Single Cycle',
+                '5_stage':            '5 Stage',
+                direct_mapped:        'DirectMapped',
+                set_associative:      'SetAssociative',
+                polling:              'Polling',
+                dma:                  'DMA',
+            };
+            return map[raw] || raw;
+        }
+
+        function displayOrDash(v) {
+            return (v !== null && v !== undefined) ? String(v) : '—';
+        }
+
+        /* ── 3-D tilt ── */
+        var tiltEls = [el('artifactTilt'), el('artifactTiltB')];
+
+        function setTilt(e) {
+            tiltEls.forEach(function (tiltEl) {
+                if (!tiltEl || tiltEl.style.display === 'none') return;
+                var rect = tiltEl.getBoundingClientRect();
+                var x = (e.clientX - rect.left) / rect.width  - 0.5;
+                var y = (e.clientY - rect.top)  / rect.height - 0.5;
+                tiltEl.style.setProperty('--tilt-x', (-y * 8) + 'deg');
+                tiltEl.style.setProperty('--tilt-y', (x  * 8) + 'deg');
+            });
+        }
+        function resetTilt(tiltEl) {
+            if (!tiltEl) return;
+            tiltEl.style.setProperty('--tilt-x', '0deg');
+            tiltEl.style.setProperty('--tilt-y', '0deg');
+        }
+        document.addEventListener('mousemove', setTilt);
+        tiltEls.forEach(function (t) {
+            t && t.addEventListener('mouseleave', function () { resetTilt(t); });
+        });
+
+        /* ── Run Simulation (unchanged) ── */
+        el('simForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            el('runBtn').disabled = true;
+            el('result').textContent = 'Running simulation…';
+            el('result').classList.remove('error');
+
+            var payload = {
+                workload:        val('workload'),
+                instruction_set: val('instruction_set'),
+                pipeline:        val('pipeline'),
+                cache:           val('cache'),
+                io_type:         val('io_type')
+            };
+
+            try {
+                var res  = await fetch('/run', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify(payload)
+                });
+                var data = await res.json();
+                if (data.ok) {
+                    el('result').textContent = data.output || '(No output)';
+                } else {
+                    el('result').textContent = (data.error || 'Error') +
+                        (data.output ? '\n\n' + data.output : '');
+                    el('result').classList.add('error');
+                }
+            } catch (err) {
+                el('result').textContent = 'Request failed: ' + err.message;
+                el('result').classList.add('error');
+            }
+            el('runBtn').disabled = false;
+        });
+
+        /* ── Compare: show Config B panel ── */
+        el('compareBtn').addEventListener('click', function () {
+            el('configALabel').style.display  = 'block';
+            el('configBLabel').style.display  = 'block';
+            el('artifactTiltB').style.display = 'block';
+            el('compareBtn').style.display    = 'none';
+
+            /* hide stale comparison table */
+            el('compareTitle').style.display = 'none';
+            el('compareTable').style.display = 'none';
+            el('compareError').style.display = 'none';
+        });
+
+        /* ── Cancel Compare ── */
+        el('cancelCompareBtn').addEventListener('click', function () {
+            el('configALabel').style.display  = 'none';
+            el('configBLabel').style.display  = 'none';
+            el('artifactTiltB').style.display = 'none';
+            el('compareBtn').style.display    = 'inline-flex';
+            el('compareTitle').style.display  = 'none';
+            el('compareTable').style.display  = 'none';
+            el('compareError').style.display  = 'none';
+        });
+
+        /* ── Run Comparison ── */
+        el('runCompareBtn').addEventListener('click', async function () {
+            el('runCompareBtn').disabled = true;
+            el('compareError').style.display = 'none';
+            el('compareTitle').style.display = 'none';
+            el('compareTable').style.display = 'none';
+
+            var workload = val('workload');   /* workload from Config A form */
+
+            var configA = {
+                instruction_set: val('instruction_set'),
+                pipeline:        val('pipeline'),
+                cache:           val('cache'),
+                io_type:         val('io_type')
+            };
+
+            var configB = {
+                instruction_set: val('instruction_set_b'),
+                pipeline:        val('pipeline_b'),
+                cache:           val('cache_b'),
+                io_type:         val('io_type_b')
+            };
+
+            try {
+                var res  = await fetch('/compare', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ workload, configA, configB })
+                });
+
+                if (!res.ok) {
+                    throw new Error('Server returned ' + res.status);
+                }
+
+                var data = await res.json();
+
+                if (!data.ok) {
+                    throw new Error(data.error || 'Comparison failed');
+                }
+
+                var A = data.A;
+                var B = data.B;
+
+                /* config rows */
+                el('a_workload').textContent    = friendlyLabel(workload);
+                el('b_workload').textContent    = friendlyLabel(val('workload_b') || workload);
+                el('a_instruction').textContent = friendlyLabel(configA.instruction_set);
+                el('b_instruction').textContent = friendlyLabel(configB.instruction_set);
+                el('a_pipeline').textContent    = friendlyLabel(configA.pipeline);
+                el('b_pipeline').textContent    = friendlyLabel(configB.pipeline);
+                el('a_cache').textContent       = friendlyLabel(configA.cache);
+                el('b_cache').textContent       = friendlyLabel(configB.cache);
+                el('a_io').textContent          = friendlyLabel(configA.io_type);
+                el('b_io').textContent          = friendlyLabel(configB.io_type);
+
+                /* metrics rows */
+                el('a_cycles').textContent  = displayOrDash(A.cycles);
+                el('b_cycles').textContent  = displayOrDash(B.cycles);
+                el('a_cpi').textContent     = displayOrDash(A.cpi);
+                el('b_cpi').textContent     = displayOrDash(B.cpi);
+                el('a_hits').textContent    = displayOrDash(A.cacheHits);
+                el('b_hits').textContent    = displayOrDash(B.cacheHits);
+                el('a_misses').textContent  = displayOrDash(A.cacheMisses);
+                el('b_misses').textContent  = displayOrDash(B.cacheMisses);
+                el('a_idle').textContent    = displayOrDash(A.cpuIdleCycles);
+                el('b_idle').textContent    = displayOrDash(B.cpuIdleCycles);
+
+                /* highlight better value (lower cycles/cpi/misses/idle = better) */
+                highlightBetter('a_cycles',  'b_cycles',  false);
+                highlightBetter('a_cpi',     'b_cpi',     false);
+                highlightBetter('a_hits',    'b_hits',    true);
+                highlightBetter('a_misses',  'b_misses',  false);
+                highlightBetter('a_idle',    'b_idle',    false);
+
+                el('compareTitle').style.display = 'block';
+                el('compareTable').style.display = 'table';
+
+            } catch (err) {
+                el('compareError').textContent  = 'Comparison failed: ' + err.message;
+                el('compareError').style.display = 'block';
+            }
+
+            el('runCompareBtn').disabled = false;
+        });
+
+        /* colour the better cell green, worse cell dimmer */
+        function highlightBetter(idA, idB, higherIsBetter) {
+            var cellA = el(idA);
+            var cellB = el(idB);
+            var a = parseFloat(cellA.textContent);
+            var b = parseFloat(cellB.textContent);
+            cellA.className = '';
+            cellB.className = '';
+            if (isNaN(a) || isNaN(b)) return;
+            var aWins = higherIsBetter ? (a > b) : (a < b);
+            var bWins = higherIsBetter ? (b > a) : (b < a);
+            if (aWins) { cellA.className = 'cell-better'; cellB.className = 'cell-worse'; }
+            if (bWins) { cellB.className = 'cell-better'; cellA.className = 'cell-worse'; }
+        }
+
+    })();
+    </script>
+</body>
+</html>

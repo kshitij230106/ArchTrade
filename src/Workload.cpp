@@ -27,26 +27,6 @@ Workload Workload::create(WorkloadType type) {
         instr.push_back({ InstructionType::IO, id++ });
         break;
     }
-    case WorkloadType::MatrixMultiply: {
-        name = "Matrix Multiply (memory heavy)";
-        // NxN style: lots of LOAD, ALU, STORE with less predictable addresses
-        const int N = 12;  // small "matrix" dimension
-        int id = 0;
-        for (int i = 0; i < N; ++i) {
-            for (int j = 0; j < N; ++j) {
-                for (int k = 0; k < N; ++k) {
-                    instr.push_back({ InstructionType::LOAD, id++ });
-                    instr.push_back({ InstructionType::LOAD, id++ });
-                    instr.push_back({ InstructionType::ALU, id++ });
-                    instr.push_back({ InstructionType::LOAD, id++ });
-                    instr.push_back({ InstructionType::ALU, id++ });
-                    instr.push_back({ InstructionType::STORE, id++ });
-                }
-            }
-        }
-        instr.push_back({ InstructionType::IO, id++ });
-        break;
-    }
     case WorkloadType::ArraySum: {
         name = "Array Sum (good cache locality)";
         // Sequential access: many ALU, sequential LOAD, one STORE at end

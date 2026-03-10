@@ -21,9 +21,9 @@
  */
 class PipelineSimulator {
 public:
-    static const int BRANCH_PENALTY_CYCLES = 3;   // cycles lost on branch in 5-stage
-    static const int MEMORY_MISS_LATENCY = 10;    // extra cycles per cache miss
-    static const int POLLING_IDLE_PER_IO = 5;     // idle cycles per IO under polling
+    static const int BRANCH_PENALTY_CYCLES = 3;   // cycles lost on branch in 5-stage // if a branch occurs in a pipeline
+    static const int MEMORY_MISS_LATENCY = 10;    // extra cycles per cache miss // 10 lost if cache miss
+    static const int POLLING_IDLE_PER_IO = 5;     // idle cycles per IO under polling // if polling is used 
     static const int DATA_HAZARD_STALLS = 2;      // stalls when dependent on previous LOAD
 
     PipelineSimulator() {
@@ -36,9 +36,10 @@ public:
     SimulationResult run(const Workload& workload, const ArchitectureConfig& config) {
         cache_.reset();
         SimulationResult r;
-        r.instructionsExecuted = static_cast<int>(workload.instructions.size());
+        r.instructionsExecuted = static_cast<int>(workload.instructions.size()); // counts instructions executed
 
-        const bool isPipeline = (config.pipelineDepth == 5);
+        const bool isPipeline = (config.pipelineDepth == 5); // if pipeline = 5 cpu uses pipelining
+        // else single cycle 
         const std::string& cacheType = config.cacheType;
         int cycles = 0;
         int stalls = 0;
@@ -47,6 +48,7 @@ public:
         const std::vector<Instruction>& instr = workload.instructions;
         int prevWasLoad = -1;  // id of previous LOAD (-1 = none)
 
+        // cpu executes each instructions one by one 
         for (size_t i = 0; i < instr.size(); ++i) {
             const Instruction& inst = instr[i];
             int baseCycles = 1;  // base CPI = 1 (RISC)
@@ -56,7 +58,7 @@ public:
             // --- Branch penalty (5-stage pipeline only) ---
             if (inst.type == InstructionType::BRANCH && isPipeline) {
                 stalls += BRANCH_PENALTY_CYCLES;
-            }
+            }  // add 3 stall cycles
 
             // --- Data hazard: use after load ---
             if (isPipeline && prevWasLoad >= 0) {
