@@ -15,29 +15,30 @@ Workload Workload::create(WorkloadType type) {
     switch (type) {
     case WorkloadType::Fibonacci: {
         name = "Fibonacci (branch heavy)";
-        // Simulate loop with many branches: condition check -> branch -> ALU -> branch back
-        const int loopIterations = 80;  // number of "fib" steps
+        const int loopIterations = 80;
         int id = 0;
         for (int i = 0; i < loopIterations; ++i) {
-            instr.push_back({ InstructionType::ALU, id++ });    // compute
-            instr.push_back({ InstructionType::BRANCH, id++ }); // loop condition
-            instr.push_back({ InstructionType::ALU, id++ });
-            instr.push_back({ InstructionType::BRANCH, id++ }); // branch back
+            instr.push_back({ InstructionType::ALU,    id++ });
+            instr.push_back({ InstructionType::BRANCH, id++ });
+            instr.push_back({ InstructionType::ALU,    id++ });
+            instr.push_back({ InstructionType::BRANCH, id++ });
+            // Occasional IO to demonstrate idle cycle behavior
+            if (i % 20 == 19)
+                instr.push_back({ InstructionType::IO, id++ });
         }
         instr.push_back({ InstructionType::IO, id++ });
         break;
     }
     case WorkloadType::ArraySum: {
         name = "Array Sum (good cache locality)";
-        // Sequential access: many ALU, sequential LOAD, one STORE at end
         const int arraySize = 200;
         int id = 0;
         for (int i = 0; i < arraySize; ++i) {
             instr.push_back({ InstructionType::LOAD, id++ });
-            instr.push_back({ InstructionType::ALU, id++ });
+            instr.push_back({ InstructionType::ALU,  id++ });
         }
         instr.push_back({ InstructionType::STORE, id++ });
-        instr.push_back({ InstructionType::IO, id++ });   // e.g. output result
+        instr.push_back({ InstructionType::IO,    id++ }); // output result
         break;
     }
     }
@@ -53,6 +54,9 @@ Workload Workload::createBubbleSort() {
         w.addInstruction(InstructionType::ALU);
         w.addInstruction(InstructionType::BRANCH);
         w.addInstruction(InstructionType::STORE);
+        // Occasional IO: e.g. progress output every 30 iterations
+        if (i % 30 == 29)
+            w.addInstruction(InstructionType::IO);
     }
     return w;
 }
@@ -65,6 +69,9 @@ Workload Workload::createRandomMemory() {
         w.addInstruction(InstructionType::LOAD);
         w.addInstruction(InstructionType::ALU);
         w.addInstruction(InstructionType::LOAD);
+        // Periodic IO to show DMA vs polling difference
+        if (i % 25 == 24)
+            w.addInstruction(InstructionType::IO);
     }
     return w;
 }

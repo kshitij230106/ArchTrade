@@ -9,11 +9,11 @@
 #include "ArchitectureConfig.h"
 #include <cstdlib>
 #include <ctime>
+#include <string>
 
 /**
  * Tracks cache hits and misses for LOAD/STORE instructions.
  * Uses simple probabilistic model: Direct Mapped has lower hit rate than Set Associative.
- * Optional randomization makes results vary slightly between runs.
  */
 class CacheSimulator {
 public:
@@ -26,20 +26,20 @@ public:
 
     /**
      * Simulate a memory access. Returns true if hit, false if miss.
-     * Hit probability is higher for Set Associative and for sequential access (same "block").
+     * Hit probability is higher for Set Associative caches.
      */
     bool accessMemory(int addressOrId, const std::string& cacheType) {
         bool hit;
         if (cacheType == "SetAssociative") {
-            // Set associative: higher base hit rate (e.g. 85–95%)
+            // Set associative: higher base hit rate (~90%)
             hit = (std::rand() % 100) < 90;
         } else {
-            // Direct mapped: lower hit rate (e.g. 70–85%)
+            // Direct mapped: lower hit rate (~78%)
             hit = (std::rand() % 100) < 78;
         }
-        // Slight locality effect: repeated access to same "block" (id % 8) more likely hit
+        // Locality effect: repeated access to same cache block more likely a hit
         if (!hit && (addressOrId % 8) == ((addressOrId / 8) % 8)) {
-            hit = (std::rand() % 100) < 50;  // 50% chance to convert to hit
+            hit = (std::rand() % 100) < 50;
         }
         if (hit)
             cacheHits++;

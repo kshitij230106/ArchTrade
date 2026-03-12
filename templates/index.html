@@ -8,6 +8,127 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* ── Compare panel: side-by-side ── */
+        .compare-wrapper {
+            width: 100%;
+            max-width: 900px;
+        }
+        .compare-workload-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .compare-workload-row label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--slate-400);
+            white-space: nowrap;
+        }
+        .compare-workload-row select {
+            flex: 1;
+            padding: 0.75rem 2.75rem 0.75rem 1rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--slate-100);
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.9rem center;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .compare-workload-row select:focus {
+            outline: none;
+            border-color: var(--cyan-400);
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.3), 0 0 0 3px rgba(34,211,238,0.25);
+        }
+        .compare-cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .compare-col {
+            position: relative;
+            background: rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem 1.25rem;
+            overflow: hidden;
+        }
+        .compare-col-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--cyan-400);
+            margin-bottom: 1rem;
+        }
+        .compare-col label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--slate-400);
+        }
+        .compare-col label:first-of-type { margin-top: 0; }
+        .compare-col select,
+        .compare-col input[type="number"] {
+            width: 100%;
+            padding: 0.6rem 0.9rem;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--slate-100);
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            cursor: pointer;
+            appearance: none;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .compare-col select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.25rem;
+        }
+        .compare-col select:focus,
+        .compare-col input[type="number"]:focus {
+            outline: none;
+            border-color: var(--cyan-400);
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.3), 0 0 0 3px rgba(34,211,238,0.2);
+        }
+        .compare-section-divider {
+            margin: 1.1rem 0 0.5rem 0;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--violet-500);
+            border-top: 1px solid var(--glass-border);
+            padding-top: 0.9rem;
+        }
+        .compare-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+        /* wider content for compare mode */
+        .content.compare-active {
+            max-width: 900px;
+        }
+    </style>
 </head>
 <body>
     <div class="stage">
@@ -22,105 +143,192 @@
         <!-- Fine-grain noise overlay -->
         <div class="noise" aria-hidden="true"></div>
 
-        <div class="content">
+        <div class="content" id="mainContent">
             <h1>ArchTrade</h1>
             <p class="tagline">Computer Architecture Simulator</p>
 
-            <!-- ─── Config A (existing single-run form) ─── -->
-            <p class="config-label" id="configALabel" style="display:none;">Configuration A</p>
+            <!-- ─── SINGLE SIM PANEL ─── -->
+            <div id="singlePanel">
+                <div class="artifact-tilt" id="artifactTilt">
+                    <div class="artifact-beam"></div>
+                    <div class="artifact">
+                        <form id="simForm">
+                            <label for="workload">Workload</label>
+                            <select id="workload" name="workload" required>
+                                <option value="fibonacci">Fibonacci</option>
+                                <option value="array_sum">Array Sum</option>
+                                <option value="bubble_sort">Bubble Sort</option>
+                                <option value="random_memory_access">Random Memory Access</option>
+                                <option value="io_processing">IO Processing</option>
+                            </select>
 
-            <div class="artifact-tilt" id="artifactTilt">
-                <div class="artifact-beam"></div>
-                <div class="artifact">
-                    <form id="simForm">
-                        <label for="workload">Workload</label>
-                        <select id="workload" name="workload" required>
-                            <option value="fibonacci">Fibonacci</option>
-                            <option value="array_sum">Array Sum</option>
-                            <option value="bubble_sort">Bubble Sort</option>
-                            <option value="random_memory_access">Random Memory Access</option>
-                            <option value="io_processing">IO Processing</option>
-                        </select>
+                            <label for="instruction_set">Instruction Set</label>
+                            <select id="instruction_set" name="instruction_set" required>
+                                <option value="risc">RISC</option>
+                                <option value="cisc">CISC</option>
+                            </select>
 
-                        <label for="instruction_set">Instruction Set</label>
-                        <select id="instruction_set" name="instruction_set" required>
+                            <label for="pipeline">Pipeline</label>
+                            <select id="pipeline" name="pipeline" required>
+                                <option value="single_cycle">Single Cycle</option>
+                                <option value="5_stage">5 Stage</option>
+                            </select>
+
+                            <label for="cache">Cache</label>
+                            <select id="cache" name="cache" required>
+                                <option value="DirectMapped">DirectMapped</option>
+                                <option value="SetAssociative">SetAssociative</option>
+                            </select>
+
+                            <label for="io_type">IO Method</label>
+                            <select id="io_type" name="io_type" required>
+                                <option value="polling">Polling</option>
+                                <option value="dma">DMA</option>
+                            </select>
+
+                            <div class="form-actions">
+                                <button type="submit" id="runBtn"><span>Run Simulation</span></button>
+                                <button type="button" id="compareBtn"><span>Compare Configurations</span></button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── COMPARE PANEL (hidden by default) ─── -->
+            <div id="comparePanel" style="display:none;" class="compare-wrapper">
+
+                <!-- Workload: shared, once at top -->
+                <div class="compare-workload-row">
+                    <label for="compare_workload">Workload</label>
+                    <select id="compare_workload">
+                        <option value="fibonacci">Fibonacci</option>
+                        <option value="array_sum">Array Sum</option>
+                        <option value="bubble_sort">Bubble Sort</option>
+                        <option value="random_memory_access">Random Memory Access</option>
+                        <option value="io_processing">IO Processing</option>
+                    </select>
+                </div>
+
+                <!-- Two columns side by side -->
+                <div class="compare-cols">
+
+                    <!-- Config A -->
+                    <div class="compare-col" id="colA">
+                        <div class="compare-col-label">Configuration A</div>
+
+                        <label for="isa_A">Instruction Set</label>
+                        <select id="isa_A">
                             <option value="risc">RISC</option>
                             <option value="cisc">CISC</option>
                         </select>
 
-                        <label for="pipeline">Pipeline</label>
-                        <select id="pipeline" name="pipeline" required>
+                        <label for="pipeline_A">Pipeline</label>
+                        <select id="pipeline_A">
                             <option value="single_cycle">Single Cycle</option>
                             <option value="5_stage">5 Stage</option>
                         </select>
 
-                        <label for="cache">Cache</label>
-                        <select id="cache" name="cache" required>
-                            <option value="direct_mapped">DirectMapped</option>
-                            <option value="set_associative">SetAssociative</option>
+                        <label for="cache_A">Cache</label>
+                        <select id="cache_A">
+                            <option value="DirectMapped">Direct Mapped</option>
+                            <option value="SetAssociative">Set Associative</option>
                         </select>
 
-                        <label for="io_type">IO Method</label>
-                        <select id="io_type" name="io_type" required>
+                        <label for="io_A">IO Method</label>
+                        <select id="io_A">
                             <option value="polling">Polling</option>
                             <option value="dma">DMA</option>
                         </select>
 
-                        <div class="form-actions">
-                            <button type="submit" id="runBtn"><span>Run Simulation</span></button>
-                            <button type="button" id="compareBtn"><span>Compare Configurations</span></button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+                        <div class="compare-section-divider">Hardware Parameters</div>
 
-            <!-- ─── Config B panel (hidden until Compare is clicked) ─── -->
-            <p class="config-label" id="configBLabel" style="display:none;">Configuration B</p>
+                        <label for="cache_size_A">Cache Size (KB)</label>
+                        <input type="number" id="cache_size_A" value="32" min="1">
 
-            <div class="artifact-tilt" id="artifactTiltB" style="display:none; margin-top:1rem;">
-                <div class="artifact-beam"></div>
-                <div class="artifact">
-                    <form id="simFormB">
-                        <label for="workload_b">Workload</label>
-                        <select id="workload_b" name="workload_b" required>
-                            <option value="fibonacci">Fibonacci</option>
-                            <option value="array_sum">Array Sum</option>
-                            <option value="bubble_sort">Bubble Sort</option>
-                            <option value="random_memory_access">Random Memory Access</option>
-                            <option value="io_processing">IO Processing</option>
-                        </select>
+                        <label for="cache_latency_A">Cache Latency (cycles)</label>
+                        <input type="number" id="cache_latency_A" value="2" min="1">
 
-                        <label for="instruction_set_b">Instruction Set</label>
-                        <select id="instruction_set_b" name="instruction_set_b" required>
+                        <label for="ram_latency_A">RAM Latency (cycles)</label>
+                        <input type="number" id="ram_latency_A" value="20" min="1">
+
+                        <label for="mem_bus_latency_A">Memory Bus Latency</label>
+                        <input type="number" id="mem_bus_latency_A" value="1" min="0">
+
+                        <label for="alu_latency_A">ALU Latency (cycles)</label>
+                        <input type="number" id="alu_latency_A" value="1" min="1">
+
+                        <label for="decode_latency_A">Decode Latency (cycles)</label>
+                        <input type="number" id="decode_latency_A" value="1" min="1">
+
+                        <label for="device_latency_A">Device Latency (cycles)</label>
+                        <input type="number" id="device_latency_A" value="15" min="0">
+                    </div>
+
+                    <!-- Config B -->
+                    <div class="compare-col" id="colB">
+                        <div class="compare-col-label">Configuration B</div>
+
+                        <label for="isa_B">Instruction Set</label>
+                        <select id="isa_B">
                             <option value="risc">RISC</option>
-                            <option value="cisc">CISC</option>
+                            <option value="cisc" selected>CISC</option>
                         </select>
 
-                        <label for="pipeline_b">Pipeline</label>
-                        <select id="pipeline_b" name="pipeline_b" required>
+                        <label for="pipeline_B">Pipeline</label>
+                        <select id="pipeline_B">
                             <option value="single_cycle">Single Cycle</option>
-                            <option value="5_stage">5 Stage</option>
+                            <option value="5_stage" selected>5 Stage</option>
                         </select>
 
-                        <label for="cache_b">Cache</label>
-                        <select id="cache_b" name="cache_b" required>
-                            <option value="direct_mapped">DirectMapped</option>
-                            <option value="set_associative">SetAssociative</option>
+                        <label for="cache_B">Cache</label>
+                        <select id="cache_B">
+                            <option value="DirectMapped">Direct Mapped</option>
+                            <option value="SetAssociative" selected>Set Associative</option>
                         </select>
 
-                        <label for="io_type_b">IO Method</label>
-                        <select id="io_type_b" name="io_type_b" required>
+                        <label for="io_B">IO Method</label>
+                        <select id="io_B">
                             <option value="polling">Polling</option>
-                            <option value="dma">DMA</option>
+                            <option value="dma" selected>DMA</option>
                         </select>
 
-                        <div class="form-actions">
-                            <button type="button" id="runCompareBtn"><span>Run Comparison</span></button>
-                            <button type="button" id="cancelCompareBtn"><span>Cancel</span></button>
-                        </div>
-                    </form>
+                        <div class="compare-section-divider">Hardware Parameters</div>
+
+                        <label for="cache_size_B">Cache Size (KB)</label>
+                        <input type="number" id="cache_size_B" value="64" min="1">
+
+                        <label for="cache_latency_B">Cache Latency (cycles)</label>
+                        <input type="number" id="cache_latency_B" value="2" min="1">
+
+                        <label for="ram_latency_B">RAM Latency (cycles)</label>
+                        <input type="number" id="ram_latency_B" value="20" min="1">
+
+                        <label for="mem_bus_latency_B">Memory Bus Latency</label>
+                        <input type="number" id="mem_bus_latency_B" value="1" min="0">
+
+                        <label for="alu_latency_B">ALU Latency (cycles)</label>
+                        <input type="number" id="alu_latency_B" value="1" min="1">
+
+                        <label for="decode_latency_B">Decode Latency (cycles)</label>
+                        <input type="number" id="decode_latency_B" value="1" min="1">
+
+                        <label for="device_latency_B">Device Latency (cycles)</label>
+                        <input type="number" id="device_latency_B" value="15" min="0">
+                    </div>
+                </div><!-- /compare-cols -->
+
+                <div class="compare-actions">
+                    <button type="button" id="runCompareBtn"
+                        style="position:relative;overflow:hidden;padding:0.8rem 1.75rem;font-family:inherit;font-size:0.95rem;font-weight:600;letter-spacing:-0.02em;color:#fff;border:none;border-radius:14px;cursor:pointer;background:linear-gradient(180deg,#6366f1 0%,#7c3aed 100%);transition:box-shadow 0.5s,transform 0.35s;">
+                        <span>Run Comparison</span>
+                    </button>
+                    <button type="button" id="cancelCompareBtn"
+                        style="position:relative;overflow:hidden;padding:0.8rem 1.75rem;font-family:inherit;font-size:0.95rem;font-weight:600;letter-spacing:-0.02em;color:var(--slate-400);border:1px solid rgba(148,163,184,0.2);border-radius:14px;cursor:pointer;background:rgba(100,116,139,0.25);transition:background 0.3s,transform 0.2s;">
+                        <span>Cancel</span>
+                    </button>
                 </div>
-            </div>
+            </div><!-- /comparePanel -->
 
             <!-- ─── Single-run result ─── -->
             <h2 id="singleResultTitle">Simulation results</h2>
@@ -141,8 +349,7 @@
                 <tbody>
                     <tr>
                         <td>Workload</td>
-                        <td id="a_workload"></td>
-                        <td id="b_workload"></td>
+                        <td id="a_workload" colspan="2" style="text-align:center;"></td>
                     </tr>
                     <tr>
                         <td>Instruction Set</td>
@@ -164,8 +371,34 @@
                         <td id="a_io"></td>
                         <td id="b_io"></td>
                     </tr>
+                    <tr style="background:rgba(99,102,241,0.07);">
+                        <td style="color:var(--violet-500);font-weight:700;">Cache Size (KB)</td>
+                        <td id="a_hw_cache_size"></td>
+                        <td id="b_hw_cache_size"></td>
+                    </tr>
+                    <tr style="background:rgba(99,102,241,0.07);">
+                        <td style="color:var(--violet-500);font-weight:700;">Cache Latency</td>
+                        <td id="a_hw_cache_lat"></td>
+                        <td id="b_hw_cache_lat"></td>
+                    </tr>
+                    <tr style="background:rgba(99,102,241,0.07);">
+                        <td style="color:var(--violet-500);font-weight:700;">RAM Latency</td>
+                        <td id="a_hw_ram_lat"></td>
+                        <td id="b_hw_ram_lat"></td>
+                    </tr>
+                    <tr style="background:rgba(99,102,241,0.07);">
+                        <td style="color:var(--violet-500);font-weight:700;">ALU Latency</td>
+                        <td id="a_hw_alu"></td>
+                        <td id="b_hw_alu"></td>
+                    </tr>
+                    <tr style="background:rgba(99,102,241,0.07);">
+                        <td style="color:var(--violet-500);font-weight:700;">Device Latency</td>
+                        <td id="a_hw_dev"></td>
+                        <td id="b_hw_dev"></td>
+                    </tr>
+                    <!-- Performance metrics -->
                     <tr>
-                        <td>Cycles</td>
+                        <td>Total Cycles</td>
                         <td id="a_cycles"></td>
                         <td id="b_cycles"></td>
                     </tr>
@@ -173,6 +406,11 @@
                         <td>CPI</td>
                         <td id="a_cpi"></td>
                         <td id="b_cpi"></td>
+                    </tr>
+                    <tr>
+                        <td>Pipeline Stalls</td>
+                        <td id="a_stalls"></td>
+                        <td id="b_stalls"></td>
                     </tr>
                     <tr>
                         <td>Cache Hits</td>
@@ -198,8 +436,9 @@
     (function () {
 
         /* ── helpers ── */
-        function val(id) { return document.getElementById(id).value; }
-        function el(id)  { return document.getElementById(id); }
+        function val(id)  { return document.getElementById(id).value; }
+        function num(id)  { return parseInt(document.getElementById(id).value, 10) || 0; }
+        function el(id)   { return document.getElementById(id); }
 
         function friendlyLabel(raw) {
             const map = {
@@ -212,8 +451,8 @@
                 cisc:                 'CISC',
                 single_cycle:         'Single Cycle',
                 '5_stage':            '5 Stage',
-                direct_mapped:        'DirectMapped',
-                set_associative:      'SetAssociative',
+                DirectMapped:         'Direct Mapped',
+                SetAssociative:       'Set Associative',
                 polling:              'Polling',
                 dma:                  'DMA',
             };
@@ -225,29 +464,21 @@
         }
 
         /* ── 3-D tilt ── */
-        var tiltEls = [el('artifactTilt'), el('artifactTiltB')];
-
-        function setTilt(e) {
-            tiltEls.forEach(function (tiltEl) {
-                if (!tiltEl || tiltEl.style.display === 'none') return;
-                var rect = tiltEl.getBoundingClientRect();
-                var x = (e.clientX - rect.left) / rect.width  - 0.5;
-                var y = (e.clientY - rect.top)  / rect.height - 0.5;
-                tiltEl.style.setProperty('--tilt-x', (-y * 8) + 'deg');
-                tiltEl.style.setProperty('--tilt-y', (x  * 8) + 'deg');
-            });
-        }
-        function resetTilt(tiltEl) {
-            if (!tiltEl) return;
+        var tiltEl = el('artifactTilt');
+        document.addEventListener('mousemove', function (e) {
+            if (!tiltEl || tiltEl.style.display === 'none') return;
+            var rect = tiltEl.getBoundingClientRect();
+            var x = (e.clientX - rect.left) / rect.width  - 0.5;
+            var y = (e.clientY - rect.top)  / rect.height - 0.5;
+            tiltEl.style.setProperty('--tilt-x', (-y * 8) + 'deg');
+            tiltEl.style.setProperty('--tilt-y', (x  * 8) + 'deg');
+        });
+        tiltEl && tiltEl.addEventListener('mouseleave', function () {
             tiltEl.style.setProperty('--tilt-x', '0deg');
             tiltEl.style.setProperty('--tilt-y', '0deg');
-        }
-        document.addEventListener('mousemove', setTilt);
-        tiltEls.forEach(function (t) {
-            t && t.addEventListener('mouseleave', function () { resetTilt(t); });
         });
 
-        /* ── Run Simulation (unchanged) ── */
+        /* ── Run Simulation ── */
         el('simForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             el('runBtn').disabled = true;
@@ -283,76 +514,84 @@
             el('runBtn').disabled = false;
         });
 
-        /* ── Compare: show Config B panel ── */
+        /* ── Show Compare Panel ── */
         el('compareBtn').addEventListener('click', function () {
-            el('configALabel').style.display  = 'block';
-            el('configBLabel').style.display  = 'block';
-            el('artifactTiltB').style.display = 'block';
-            el('compareBtn').style.display    = 'none';
-
-            /* hide stale comparison table */
-            el('compareTitle').style.display = 'none';
-            el('compareTable').style.display = 'none';
-            el('compareError').style.display = 'none';
+            el('singlePanel').style.display   = 'none';
+            el('comparePanel').style.display  = 'block';
+            el('mainContent').classList.add('compare-active');
+            el('compareTitle').style.display  = 'none';
+            el('compareTable').style.display  = 'none';
+            el('compareError').style.display  = 'none';
+            el('singleResultTitle').style.display = 'none';
+            el('result').style.display        = 'none';
         });
 
         /* ── Cancel Compare ── */
         el('cancelCompareBtn').addEventListener('click', function () {
-            el('configALabel').style.display  = 'none';
-            el('configBLabel').style.display  = 'none';
-            el('artifactTiltB').style.display = 'none';
-            el('compareBtn').style.display    = 'inline-flex';
+            el('singlePanel').style.display   = 'block';
+            el('comparePanel').style.display  = 'none';
+            el('mainContent').classList.remove('compare-active');
             el('compareTitle').style.display  = 'none';
             el('compareTable').style.display  = 'none';
             el('compareError').style.display  = 'none';
+            el('singleResultTitle').style.display = 'block';
+            el('result').style.display        = 'block';
         });
 
         /* ── Run Comparison ── */
         el('runCompareBtn').addEventListener('click', async function () {
             el('runCompareBtn').disabled = true;
-            el('compareError').style.display = 'none';
-            el('compareTitle').style.display = 'none';
-            el('compareTable').style.display = 'none';
+            el('compareError').style.display  = 'none';
+            el('compareTitle').style.display  = 'none';
+            el('compareTable').style.display  = 'none';
 
-            var workload = val('workload');   /* workload from Config A form */
+            var workload = val('compare_workload');
 
             var configA = {
-                instruction_set: val('instruction_set'),
-                pipeline:        val('pipeline'),
-                cache:           val('cache'),
-                io_type:         val('io_type')
+                instruction_set:  val('isa_A'),
+                pipeline:         val('pipeline_A'),
+                cache:            val('cache_A'),
+                io_type:          val('io_A'),
+                cache_size:       num('cache_size_A'),
+                cache_latency:    num('cache_latency_A'),
+                ram_latency:      num('ram_latency_A'),
+                mem_bus_latency:  num('mem_bus_latency_A'),
+                alu_latency:      num('alu_latency_A'),
+                decode_latency:   num('decode_latency_A'),
+                device_latency:   num('device_latency_A')
             };
 
             var configB = {
-                instruction_set: val('instruction_set_b'),
-                pipeline:        val('pipeline_b'),
-                cache:           val('cache_b'),
-                io_type:         val('io_type_b')
+                instruction_set:  val('isa_B'),
+                pipeline:         val('pipeline_B'),
+                cache:            val('cache_B'),
+                io_type:          val('io_B'),
+                cache_size:       num('cache_size_B'),
+                cache_latency:    num('cache_latency_B'),
+                ram_latency:      num('ram_latency_B'),
+                mem_bus_latency:  num('mem_bus_latency_B'),
+                alu_latency:      num('alu_latency_B'),
+                decode_latency:   num('decode_latency_B'),
+                device_latency:   num('device_latency_B')
             };
 
             try {
-                var res  = await fetch('/compare', {
+                var res = await fetch('/compare', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({ workload, configA, configB })
                 });
 
-                if (!res.ok) {
-                    throw new Error('Server returned ' + res.status);
-                }
+                if (!res.ok) throw new Error('Server returned ' + res.status);
 
                 var data = await res.json();
-
-                if (!data.ok) {
-                    throw new Error(data.error || 'Comparison failed');
-                }
+                if (!data.ok) throw new Error(data.error || 'Comparison failed');
 
                 var A = data.A;
                 var B = data.B;
 
                 /* config rows */
                 el('a_workload').textContent    = friendlyLabel(workload);
-                el('b_workload').textContent    = friendlyLabel(val('workload_b') || workload);
                 el('a_instruction').textContent = friendlyLabel(configA.instruction_set);
                 el('b_instruction').textContent = friendlyLabel(configB.instruction_set);
                 el('a_pipeline').textContent    = friendlyLabel(configA.pipeline);
@@ -362,30 +601,45 @@
                 el('a_io').textContent          = friendlyLabel(configA.io_type);
                 el('b_io').textContent          = friendlyLabel(configB.io_type);
 
-                /* metrics rows */
-                el('a_cycles').textContent  = displayOrDash(A.cycles);
-                el('b_cycles').textContent  = displayOrDash(B.cycles);
-                el('a_cpi').textContent     = displayOrDash(A.cpi);
-                el('b_cpi').textContent     = displayOrDash(B.cpi);
-                el('a_hits').textContent    = displayOrDash(A.cacheHits);
-                el('b_hits').textContent    = displayOrDash(B.cacheHits);
-                el('a_misses').textContent  = displayOrDash(A.cacheMisses);
-                el('b_misses').textContent  = displayOrDash(B.cacheMisses);
-                el('a_idle').textContent    = displayOrDash(A.cpuIdleCycles);
-                el('b_idle').textContent    = displayOrDash(B.cpuIdleCycles);
+                /* hardware param rows */
+                el('a_hw_cache_size').textContent = configA.cache_size;
+                el('b_hw_cache_size').textContent = configB.cache_size;
+                el('a_hw_cache_lat').textContent  = configA.cache_latency;
+                el('b_hw_cache_lat').textContent  = configB.cache_latency;
+                el('a_hw_ram_lat').textContent    = configA.ram_latency;
+                el('b_hw_ram_lat').textContent    = configB.ram_latency;
+                el('a_hw_alu').textContent        = configA.alu_latency;
+                el('b_hw_alu').textContent        = configB.alu_latency;
+                el('a_hw_dev').textContent        = configA.device_latency;
+                el('b_hw_dev').textContent        = configB.device_latency;
 
-                /* highlight better value (lower cycles/cpi/misses/idle = better) */
-                highlightBetter('a_cycles',  'b_cycles',  false);
-                highlightBetter('a_cpi',     'b_cpi',     false);
-                highlightBetter('a_hits',    'b_hits',    true);
-                highlightBetter('a_misses',  'b_misses',  false);
-                highlightBetter('a_idle',    'b_idle',    false);
+                /* metric rows */
+                el('a_cycles').textContent = displayOrDash(A.cycles);
+                el('b_cycles').textContent = displayOrDash(B.cycles);
+                el('a_cpi').textContent    = displayOrDash(A.cpi);
+                el('b_cpi').textContent    = displayOrDash(B.cpi);
+                el('a_stalls').textContent = displayOrDash(A.pipelineStalls);
+                el('b_stalls').textContent = displayOrDash(B.pipelineStalls);
+                el('a_hits').textContent   = displayOrDash(A.cacheHits);
+                el('b_hits').textContent   = displayOrDash(B.cacheHits);
+                el('a_misses').textContent = displayOrDash(A.cacheMisses);
+                el('b_misses').textContent = displayOrDash(B.cacheMisses);
+                el('a_idle').textContent   = displayOrDash(A.cpuIdleCycles);
+                el('b_idle').textContent   = displayOrDash(B.cpuIdleCycles);
+
+                /* highlight better/worse */
+                highlightBetter('a_cycles', 'b_cycles', false);
+                highlightBetter('a_cpi',    'b_cpi',    false);
+                highlightBetter('a_stalls', 'b_stalls', false);
+                highlightBetter('a_hits',   'b_hits',   true);
+                highlightBetter('a_misses', 'b_misses', false);
+                highlightBetter('a_idle',   'b_idle',   false);
 
                 el('compareTitle').style.display = 'block';
                 el('compareTable').style.display = 'table';
 
             } catch (err) {
-                el('compareError').textContent  = 'Comparison failed: ' + err.message;
+                el('compareError').textContent   = 'Comparison failed: ' + err.message;
                 el('compareError').style.display = 'block';
             }
 
