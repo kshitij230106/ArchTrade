@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         /* ── Compare panel: side-by-side ── */
         .compare-wrapper {
@@ -127,6 +129,112 @@
         /* wider content for compare mode */
         .content.compare-active {
             max-width: 900px;
+        }
+
+        /* ── Accordion ── */
+        .accordion {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+        }
+
+        .accordion-item {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px -8px rgba(0,0,0,0.4);
+            transition: border-color 0.3s;
+        }
+        .accordion-item:hover {
+            border-color: rgba(148,163,184,0.18);
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            user-select: none;
+            gap: 0.75rem;
+        }
+        .accordion-header:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .accordion-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--cyan-400);
+        }
+
+        .accordion-arrow {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--slate-500);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+        }
+        .accordion-item.open .accordion-arrow {
+            transform: rotate(180deg);
+            color: var(--cyan-400);
+        }
+
+        .accordion-body {
+            display: none;
+            padding: 0 1.25rem 1.25rem 1.25rem;
+        }
+        .accordion-item.open .accordion-body {
+            display: block;
+        }
+
+        /* ── Chart layout inside accordion ── */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .chart-sub-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--slate-500);
+            margin-bottom: 0.5rem;
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 260px;
+        }
+        .chart-wrap-wide {
+            position: relative;
+            height: 280px;
+        }
+
+        /* zero-cache message */
+        .cache-empty-msg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--slate-500);
+            letter-spacing: 0.01em;
+            text-align: center;
+            padding: 1rem;
         }
     </style>
 </head>
@@ -334,101 +442,79 @@
             <h2 id="singleResultTitle">Simulation results</h2>
             <pre id="result">No results yet. Click "Run Simulation" to run.</pre>
 
-            <!-- ─── Comparison table ─── -->
+            <!-- ─── Comparison accordion ─── -->
             <h2 id="compareTitle" style="display:none;">Configuration Comparison</h2>
             <pre id="compareError" class="error" style="display:none;"></pre>
 
-            <table id="compareTable" class="comparison-table" style="display:none;">
-                <thead>
-                    <tr>
-                        <th>Metric</th>
-                        <th>Config A</th>
-                        <th>Config B</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Workload</td>
-                        <td id="a_workload" colspan="2" style="text-align:center;"></td>
-                    </tr>
-                    <tr>
-                        <td>Instruction Set</td>
-                        <td id="a_instruction"></td>
-                        <td id="b_instruction"></td>
-                    </tr>
-                    <tr>
-                        <td>Pipeline</td>
-                        <td id="a_pipeline"></td>
-                        <td id="b_pipeline"></td>
-                    </tr>
-                    <tr>
-                        <td>Cache</td>
-                        <td id="a_cache"></td>
-                        <td id="b_cache"></td>
-                    </tr>
-                    <tr>
-                        <td>IO Method</td>
-                        <td id="a_io"></td>
-                        <td id="b_io"></td>
-                    </tr>
-                    <tr style="background:rgba(99,102,241,0.07);">
-                        <td style="color:var(--violet-500);font-weight:700;">Cache Size (KB)</td>
-                        <td id="a_hw_cache_size"></td>
-                        <td id="b_hw_cache_size"></td>
-                    </tr>
-                    <tr style="background:rgba(99,102,241,0.07);">
-                        <td style="color:var(--violet-500);font-weight:700;">Cache Latency</td>
-                        <td id="a_hw_cache_lat"></td>
-                        <td id="b_hw_cache_lat"></td>
-                    </tr>
-                    <tr style="background:rgba(99,102,241,0.07);">
-                        <td style="color:var(--violet-500);font-weight:700;">RAM Latency</td>
-                        <td id="a_hw_ram_lat"></td>
-                        <td id="b_hw_ram_lat"></td>
-                    </tr>
-                    <tr style="background:rgba(99,102,241,0.07);">
-                        <td style="color:var(--violet-500);font-weight:700;">ALU Latency</td>
-                        <td id="a_hw_alu"></td>
-                        <td id="b_hw_alu"></td>
-                    </tr>
-                    <tr style="background:rgba(99,102,241,0.07);">
-                        <td style="color:var(--violet-500);font-weight:700;">Device Latency</td>
-                        <td id="a_hw_dev"></td>
-                        <td id="b_hw_dev"></td>
-                    </tr>
-                    <!-- Performance metrics -->
-                    <tr>
-                        <td>Total Cycles</td>
-                        <td id="a_cycles"></td>
-                        <td id="b_cycles"></td>
-                    </tr>
-                    <tr>
-                        <td>CPI</td>
-                        <td id="a_cpi"></td>
-                        <td id="b_cpi"></td>
-                    </tr>
-                    <tr>
-                        <td>Pipeline Stalls</td>
-                        <td id="a_stalls"></td>
-                        <td id="b_stalls"></td>
-                    </tr>
-                    <tr>
-                        <td>Cache Hits</td>
-                        <td id="a_hits"></td>
-                        <td id="b_hits"></td>
-                    </tr>
-                    <tr>
-                        <td>Cache Misses</td>
-                        <td id="a_misses"></td>
-                        <td id="b_misses"></td>
-                    </tr>
-                    <tr>
-                        <td>CPU Idle Cycles</td>
-                        <td id="a_idle"></td>
-                        <td id="b_idle"></td>
-                    </tr>
-                </tbody>
-            </table>
+            <div id="compareCharts" style="display:none;">
+                <div class="accordion">
+
+                    <!-- ① Core Performance -->
+                    <div class="accordion-item" id="acc-core">
+                        <div class="accordion-header" data-target="acc-core">
+                            <span class="accordion-title">▶ Core Performance</span>
+                            <span class="accordion-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            </span>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="charts-row">
+                                <div>
+                                    <div class="chart-sub-label">Total Cycles</div>
+                                    <div class="chart-wrap"><canvas id="chartCycles"></canvas></div>
+                                </div>
+                                <div>
+                                    <div class="chart-sub-label">CPI</div>
+                                    <div class="chart-wrap"><canvas id="chartCpi"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ② Pipeline Behavior -->
+                    <div class="accordion-item" id="acc-pipeline">
+                        <div class="accordion-header" data-target="acc-pipeline">
+                            <span class="accordion-title">▶ Pipeline Behavior</span>
+                            <span class="accordion-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            </span>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="charts-row">
+                                <div>
+                                    <div class="chart-sub-label">Pipeline Stalls</div>
+                                    <div class="chart-wrap"><canvas id="chartStalls"></canvas></div>
+                                </div>
+                                <div>
+                                    <div class="chart-sub-label">CPU Idle Cycles</div>
+                                    <div class="chart-wrap"><canvas id="chartIdle"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ③ Cache Analysis -->
+                    <div class="accordion-item" id="acc-cache">
+                        <div class="accordion-header" data-target="acc-cache">
+                            <span class="accordion-title">▶ Cache Analysis</span>
+                            <span class="accordion-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            </span>
+                        </div>
+                        <div class="accordion-body">
+                            <div id="cacheChartWrap">
+                                <div class="chart-sub-label">Cache Hits vs Cache Misses</div>
+                                <div class="chart-wrap-wide"><canvas id="chartCache"></canvas></div>
+                            </div>
+                            <div id="cacheEmptyMsg" class="cache-empty-msg" style="display:none;">
+                                No cache accesses occurred for this workload.
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /accordion -->
+            </div><!-- /compareCharts -->
+
         </div>
     </div>
 
@@ -461,6 +547,155 @@
 
         function displayOrDash(v) {
             return (v !== null && v !== undefined) ? String(v) : '—';
+        }
+
+        /* ── Accordion toggle ── */
+        document.querySelectorAll('.accordion-header').forEach(function (header) {
+            header.addEventListener('click', function () {
+                var targetId = header.getAttribute('data-target');
+                var item = document.getElementById(targetId);
+                var wasOpen = item.classList.contains('open');
+                item.classList.toggle('open');
+                /* update the ▶ / ▼ prefix in the title text */
+                var titleEl = header.querySelector('.accordion-title');
+                if (titleEl) {
+                    titleEl.textContent = titleEl.textContent.replace(/^[▶▼]\s*/, (wasOpen ? '▶ ' : '▼ '));
+                }
+            });
+        });
+
+        /* ── Chart.js global defaults ── */
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, sans-serif";
+        Chart.defaults.font.size = 11;
+
+        var COLOR_A        = 'rgba(99, 102, 241, 0.85)';
+        var COLOR_A_BORDER = 'rgba(99, 102, 241, 1)';
+        var COLOR_B        = 'rgba(34, 211, 238, 0.75)';
+        var COLOR_B_BORDER = 'rgba(34, 211, 238, 1)';
+        var COLOR_MISS_A   = 'rgba(248, 113, 113, 0.8)';
+        var COLOR_MISS_B   = 'rgba(248, 113, 113, 0.5)';
+
+        /* destroy-before-redraw registry */
+        var chartInstances = {};
+
+        function makeBarChart(canvasId, valueA, valueB) {
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+            var ctx = document.getElementById(canvasId).getContext('2d');
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Config A', 'Config B'],
+                    datasets: [{
+                        label: 'Value',
+                        data: [valueA, valueB],
+                        backgroundColor: [COLOR_A, COLOR_B],
+                        borderColor: [COLOR_A_BORDER, COLOR_B_BORDER],
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ' ' + (ctx.raw !== null ? ctx.raw : '—');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function makeCacheGroupedChart(canvasId, hitsA, hitsB, missesA, missesB) {
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+            var ctx = document.getElementById(canvasId).getContext('2d');
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Config A', 'Config B'],
+                    datasets: [
+                        {
+                            label: 'Cache Hits',
+                            data: [hitsA, hitsB],
+                            backgroundColor: [COLOR_A, COLOR_B],
+                            borderColor: [COLOR_A_BORDER, COLOR_B_BORDER],
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            borderSkipped: false,
+                        },
+                        {
+                            label: 'Cache Misses',
+                            data: [missesA, missesB],
+                            backgroundColor: [COLOR_MISS_A, COLOR_MISS_B],
+                            borderColor: ['rgba(248,113,113,1)', 'rgba(248,113,113,0.7)'],
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            borderSkipped: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { color: '#94a3b8', boxWidth: 12 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ' ' + ctx.dataset.label + ': ' + (ctx.raw !== null ? ctx.raw : '—');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function safeNum(v) {
+            return (v !== null && v !== undefined) ? v : 0;
+        }
+
+        /* helper: set accordion title prefix */
+        function setAccordionPrefix(itemId, open) {
+            var header = document.querySelector('#' + itemId + ' .accordion-title');
+            if (!header) return;
+            header.textContent = header.textContent.replace(/^[▶▼]\s*/, (open ? '▼ ' : '▶ '));
         }
 
         /* ── 3-D tilt ── */
@@ -516,34 +751,40 @@
 
         /* ── Show Compare Panel ── */
         el('compareBtn').addEventListener('click', function () {
-            el('singlePanel').style.display   = 'none';
-            el('comparePanel').style.display  = 'block';
+            el('singlePanel').style.display    = 'none';
+            el('comparePanel').style.display   = 'block';
             el('mainContent').classList.add('compare-active');
-            el('compareTitle').style.display  = 'none';
-            el('compareTable').style.display  = 'none';
-            el('compareError').style.display  = 'none';
+            el('compareTitle').style.display   = 'none';
+            el('compareCharts').style.display  = 'none';
+            el('compareError').style.display   = 'none';
             el('singleResultTitle').style.display = 'none';
-            el('result').style.display        = 'none';
+            el('result').style.display         = 'none';
         });
 
         /* ── Cancel Compare ── */
         el('cancelCompareBtn').addEventListener('click', function () {
-            el('singlePanel').style.display   = 'block';
-            el('comparePanel').style.display  = 'none';
+            el('singlePanel').style.display    = 'block';
+            el('comparePanel').style.display   = 'none';
             el('mainContent').classList.remove('compare-active');
-            el('compareTitle').style.display  = 'none';
-            el('compareTable').style.display  = 'none';
-            el('compareError').style.display  = 'none';
+            el('compareTitle').style.display   = 'none';
+            el('compareCharts').style.display  = 'none';
+            el('compareError').style.display   = 'none';
             el('singleResultTitle').style.display = 'block';
-            el('result').style.display        = 'block';
+            el('result').style.display         = 'block';
         });
 
         /* ── Run Comparison ── */
         el('runCompareBtn').addEventListener('click', async function () {
             el('runCompareBtn').disabled = true;
-            el('compareError').style.display  = 'none';
-            el('compareTitle').style.display  = 'none';
-            el('compareTable').style.display  = 'none';
+            el('compareError').style.display   = 'none';
+            el('compareTitle').style.display   = 'none';
+            el('compareCharts').style.display  = 'none';
+
+            /* collapse all sections and reset prefixes */
+            ['acc-core', 'acc-pipeline', 'acc-cache'].forEach(function(id) {
+                el(id).classList.remove('open');
+                setAccordionPrefix(id, false);
+            });
 
             var workload = val('compare_workload');
 
@@ -590,53 +831,35 @@
                 var A = data.A;
                 var B = data.B;
 
-                /* config rows */
-                el('a_workload').textContent    = friendlyLabel(workload);
-                el('a_instruction').textContent = friendlyLabel(configA.instruction_set);
-                el('b_instruction').textContent = friendlyLabel(configB.instruction_set);
-                el('a_pipeline').textContent    = friendlyLabel(configA.pipeline);
-                el('b_pipeline').textContent    = friendlyLabel(configB.pipeline);
-                el('a_cache').textContent       = friendlyLabel(configA.cache);
-                el('b_cache').textContent       = friendlyLabel(configB.cache);
-                el('a_io').textContent          = friendlyLabel(configA.io_type);
-                el('b_io').textContent          = friendlyLabel(configB.io_type);
+                /* ── Core Performance ── */
+                makeBarChart('chartCycles', safeNum(A.cycles),        safeNum(B.cycles));
+                makeBarChart('chartCpi',    safeNum(A.cpi),           safeNum(B.cpi));
 
-                /* hardware param rows */
-                el('a_hw_cache_size').textContent = configA.cache_size;
-                el('b_hw_cache_size').textContent = configB.cache_size;
-                el('a_hw_cache_lat').textContent  = configA.cache_latency;
-                el('b_hw_cache_lat').textContent  = configB.cache_latency;
-                el('a_hw_ram_lat').textContent    = configA.ram_latency;
-                el('b_hw_ram_lat').textContent    = configB.ram_latency;
-                el('a_hw_alu').textContent        = configA.alu_latency;
-                el('b_hw_alu').textContent        = configB.alu_latency;
-                el('a_hw_dev').textContent        = configA.device_latency;
-                el('b_hw_dev').textContent        = configB.device_latency;
+                /* ── Pipeline Behavior ── */
+                makeBarChart('chartStalls', safeNum(A.pipelineStalls), safeNum(B.pipelineStalls));
+                makeBarChart('chartIdle',   safeNum(A.cpuIdleCycles),  safeNum(B.cpuIdleCycles));
 
-                /* metric rows */
-                el('a_cycles').textContent = displayOrDash(A.cycles);
-                el('b_cycles').textContent = displayOrDash(B.cycles);
-                el('a_cpi').textContent    = displayOrDash(A.cpi);
-                el('b_cpi').textContent    = displayOrDash(B.cpi);
-                el('a_stalls').textContent = displayOrDash(A.pipelineStalls);
-                el('b_stalls').textContent = displayOrDash(B.pipelineStalls);
-                el('a_hits').textContent   = displayOrDash(A.cacheHits);
-                el('b_hits').textContent   = displayOrDash(B.cacheHits);
-                el('a_misses').textContent = displayOrDash(A.cacheMisses);
-                el('b_misses').textContent = displayOrDash(B.cacheMisses);
-                el('a_idle').textContent   = displayOrDash(A.cpuIdleCycles);
-                el('b_idle').textContent   = displayOrDash(B.cpuIdleCycles);
+                /* ── Cache Analysis: zero-value guard ── */
+                var hitsA   = safeNum(A.cacheHits);
+                var hitsB   = safeNum(B.cacheHits);
+                var missesA = safeNum(A.cacheMisses);
+                var missesB = safeNum(B.cacheMisses);
+                var allZero = (hitsA === 0 && hitsB === 0 && missesA === 0 && missesB === 0);
 
-                /* highlight better/worse */
-                highlightBetter('a_cycles', 'b_cycles', false);
-                highlightBetter('a_cpi',    'b_cpi',    false);
-                highlightBetter('a_stalls', 'b_stalls', false);
-                highlightBetter('a_hits',   'b_hits',   true);
-                highlightBetter('a_misses', 'b_misses', false);
-                highlightBetter('a_idle',   'b_idle',   false);
+                if (allZero) {
+                    el('cacheChartWrap').style.display = 'none';
+                    el('cacheEmptyMsg').style.display  = 'flex';
+                } else {
+                    el('cacheChartWrap').style.display = 'block';
+                    el('cacheEmptyMsg').style.display  = 'none';
+                    makeCacheGroupedChart('chartCache', hitsA, hitsB, missesA, missesB);
+                }
 
-                el('compareTitle').style.display = 'block';
-                el('compareTable').style.display = 'table';
+                /* show accordion container, auto-open first section */
+                el('compareTitle').style.display  = 'block';
+                el('compareCharts').style.display = 'block';
+                el('acc-core').classList.add('open');
+                setAccordionPrefix('acc-core', true);
 
             } catch (err) {
                 el('compareError').textContent   = 'Comparison failed: ' + err.message;
@@ -645,21 +868,6 @@
 
             el('runCompareBtn').disabled = false;
         });
-
-        /* colour the better cell green, worse cell dimmer */
-        function highlightBetter(idA, idB, higherIsBetter) {
-            var cellA = el(idA);
-            var cellB = el(idB);
-            var a = parseFloat(cellA.textContent);
-            var b = parseFloat(cellB.textContent);
-            cellA.className = '';
-            cellB.className = '';
-            if (isNaN(a) || isNaN(b)) return;
-            var aWins = higherIsBetter ? (a > b) : (a < b);
-            var bWins = higherIsBetter ? (b > a) : (b < a);
-            if (aWins) { cellA.className = 'cell-better'; cellB.className = 'cell-worse'; }
-            if (bWins) { cellB.className = 'cell-better'; cellA.className = 'cell-worse'; }
-        }
 
     })();
     </script>
