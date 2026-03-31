@@ -832,13 +832,12 @@
                 var B = data.B;
 
                 /* ── Core Performance ── */
-                makeBarChart('chartCycles', safeNum(A.cycles),        safeNum(B.cycles));
-                makeBarChart('chartCpi',    safeNum(A.cpi),           safeNum(B.cpi));
+                makeBarChart('chartCycles',   safeNum(A.cycles),            safeNum(B.cycles));
+                makeBarChart('chartCpi',      safeNum(A.cpi),               safeNum(B.cpi));
 
                 /* ── Pipeline Behavior ── */
-                makeBarChart('chartStalls', safeNum(A.pipelineStalls), safeNum(B.pipelineStalls));
-                makeBarChart('chartIdle',   safeNum(A.cpuIdleCycles),  safeNum(B.cpuIdleCycles));
-
+                makeBarChart('chartStalls',      safeNum(A.pipelineStalls),    safeNum(B.pipelineStalls));
+                makeBarChart('chartIdle',        safeNum(A.cpuIdleCycles),     safeNum(B.cpuIdleCycles));
                 /* ── Cache Analysis: zero-value guard ── */
                 var hitsA   = safeNum(A.cacheHits);
                 var hitsB   = safeNum(B.cacheHits);

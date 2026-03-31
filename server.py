@@ -9,22 +9,30 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 def parse_simulator_output(output):
     """Parse the C++ simulator stdout into a structured dict."""
     result = {
-        "cycles":        None,
-        "cpi":           None,
-        "cacheHits":     None,
-        "cacheMisses":   None,
-        "pipelineStalls":None,
-        "cpuIdleCycles": None,
+        "cycles":            None,
+        "cpi":               None,
+        "cacheHits":         None,
+        "cacheMisses":       None,
+        "pipelineStalls":    None,
+        "cpuIdleCycles":     None,
+        "memoryStallCycles": None,
+        "branchStallCycles": None,
+        "ioStallCycles":     None,
+        "executionCycles":   None,
         "raw": output
     }
 
     patterns = {
-        "cycles":         r"(?i)(?:total\s+)?cycles?\s*[:\-=]\s*([\d.]+)",
-        "cpi":            r"(?i)cpi\s*[:\-=]\s*([\d.]+)",
-        "cacheHits":      r"(?i)cache\s+hits?\s*[:\-=]\s*([\d.]+)",
-        "cacheMisses":    r"(?i)cache\s+misses?\s*[:\-=]\s*([\d.]+)",
-        "pipelineStalls": r"(?i)pipeline\s+stalls?\s*[:\-=]\s*([\d.]+)",
-        "cpuIdleCycles":  r"(?i)(?:cpu\s+)?idle\s+cycles?\s*[:\-=]\s*([\d.]+)",
+        "cycles":            r"(?i)(?:total\s+)?cycles?\s*[:\-=]\s*([\d.]+)",
+        "cpi":               r"(?i)cpi\s*[:\-=]\s*([\d.]+)",
+        "cacheHits":         r"(?i)cache\s+hits?\s*[:\-=]\s*([\d.]+)",
+        "cacheMisses":       r"(?i)cache\s+misses?\s*[:\-=]\s*([\d.]+)",
+        "pipelineStalls":    r"(?i)pipeline\s+stalls?\s*[:\-=]\s*([\d.]+)",
+        "cpuIdleCycles":     r"(?i)(?:cpu\s+)?idle\s+cycles?\s*[:\-=]\s*([\d.]+)",
+        "memoryStallCycles": r"(?i)memory\s+stall\s+cycles?\s*[:\-=]\s*([\d.]+)",
+        "branchStallCycles": r"(?i)branch\s+stall\s+cycles?\s*[:\-=]\s*([\d.]+)",
+        "ioStallCycles":     r"(?i)io\s+stall\s+cycles?\s*[:\-=]\s*([\d.]+)",
+        "executionCycles":   r"(?i)execution\s+cycles?\s*[:\-=]\s*([\d.]+)",
     }
 
     for key, pattern in patterns.items():
@@ -37,7 +45,7 @@ def parse_simulator_output(output):
 
 
 def _run_sim(workload, instruction_set, pipeline, cache, io_type,
-             cache_size=32, cache_latency=2, ram_latency=20,
+             cache_size=32, cache_latency=2, ram_latency=20, mem_bus_latency=1,
              alu_latency=1, decode_latency=1, device_latency=15):
     exe_path = os.path.join(os.getcwd(), "ArchTrade_web.exe")
     process = subprocess.run(
@@ -51,6 +59,7 @@ def _run_sim(workload, instruction_set, pipeline, cache, io_type,
             str(cache_size),
             str(cache_latency),
             str(ram_latency),
+            str(mem_bus_latency),
             str(alu_latency),
             str(decode_latency),
             str(device_latency),
@@ -78,16 +87,17 @@ def run_simulation():
         io_type         = data.get("io_type")
 
         # Optional hardware params (single-run uses defaults)
-        cache_size     = data.get("cache_size",     32)
-        cache_latency  = data.get("cache_latency",  2)
-        ram_latency    = data.get("ram_latency",    20)
-        alu_latency    = data.get("alu_latency",    1)
-        decode_latency = data.get("decode_latency", 1)
-        device_latency = data.get("device_latency", 15)
+        cache_size      = data.get("cache_size",      32)
+        cache_latency   = data.get("cache_latency",   2)
+        ram_latency     = data.get("ram_latency",     20)
+        mem_bus_latency = data.get("mem_bus_latency", 1)
+        alu_latency     = data.get("alu_latency",     1)
+        decode_latency  = data.get("decode_latency",  1)
+        device_latency  = data.get("device_latency",  15)
 
         stdout, _ = _run_sim(
             workload, instruction_set, pipeline, cache, io_type,
-            cache_size, cache_latency, ram_latency,
+            cache_size, cache_latency, ram_latency, mem_bus_latency,
             alu_latency, decode_latency, device_latency
         )
 
@@ -115,12 +125,13 @@ def compare():
             configA.get("pipeline"),
             configA.get("cache"),
             configA.get("io_type"),
-            hw(configA, "cache_size",     32),
-            hw(configA, "cache_latency",  2),
-            hw(configA, "ram_latency",    20),
-            hw(configA, "alu_latency",    1),
-            hw(configA, "decode_latency", 1),
-            hw(configA, "device_latency", 15),
+            hw(configA, "cache_size",      32),
+            hw(configA, "cache_latency",   2),
+            hw(configA, "ram_latency",     20),
+            hw(configA, "mem_bus_latency", 1),
+            hw(configA, "alu_latency",     1),
+            hw(configA, "decode_latency",  1),
+            hw(configA, "device_latency",  15),
         )
 
         outB, _ = _run_sim(
@@ -129,12 +140,13 @@ def compare():
             configB.get("pipeline"),
             configB.get("cache"),
             configB.get("io_type"),
-            hw(configB, "cache_size",     32),
-            hw(configB, "cache_latency",  2),
-            hw(configB, "ram_latency",    20),
-            hw(configB, "alu_latency",    1),
-            hw(configB, "decode_latency", 1),
-            hw(configB, "device_latency", 15),
+            hw(configB, "cache_size",      32),
+            hw(configB, "cache_latency",   2),
+            hw(configB, "ram_latency",     20),
+            hw(configB, "mem_bus_latency", 1),
+            hw(configB, "alu_latency",     1),
+            hw(configB, "decode_latency",  1),
+            hw(configB, "device_latency",  15),
         )
 
         parsedA = parse_simulator_output(outA)

@@ -1,6 +1,21 @@
 /**
  * ArchTrade - Educational Computer Architecture Simulator
- * PipelineSimulator: runs instructions and applies parameter-driven pipeline/cache/IO rules.
+ * PipelineSimulator: runs instructions and applies parameter-driven
+ * pipeline / cache / IO rules.
+ *
+ * Every ArchitectureConfig field influences at least one metric:
+ *
+ *   isRISC           → baseInstructionCycles() (decode overhead)
+ *   pipelineDepth    → branchPenalty(), dataHazardStall(), pipelineStartupCycles()
+ *   cacheType        → cacheHitRatePercent() → hit/miss ratio
+ *   cacheSizeKB      → cacheHitRatePercent()
+ *   cacheLatency     → cacheHitCycles(), cacheMissCycles()
+ *   ramLatency       → cacheMissCycles(), memoryStallCycles
+ *   memoryBusLatency → cacheHitCycles(), cacheMissCycles()
+ *   aluLatency       → baseInstructionCycles(), dataHazardStall()
+ *   decodeLatency    → baseInstructionCycles() (x2 for CISC)
+ *   useDMA           → cpuIdleCycles / ioStallCycles
+ *   deviceLatency    → cpuIdleCycles / ioStallCycles (polling mode)
  */
 
 #ifndef ARCHTRADE_PIPELINE_SIMULATOR_H
@@ -15,11 +30,6 @@
 #include <ctime>
 #include <vector>
 
-/**
- * Runs the workload through a parameter-driven pipeline model.
- * All cycle costs are derived from ArchitectureConfig parameters —
- * no hardcoded constants remain.
- */
 class PipelineSimulator {
 public:
     PipelineSimulator() {
@@ -35,60 +45,90 @@ public:
         r.instructionsExecuted = static_cast<int>(workload.instructions.size());
 
         const bool isPipeline = (config.pipelineDepth >= 2);
-        const std::string& cacheType = config.cacheType;
 
-        int cycles = 0;
-        int stalls = 0;
-        int idleCycles = 0;
+        // ── Derived parameters (all computed from config, no magic numbers) ──
+        const int branchPenalty  = config.branchPenalty();     // 0 for single-cycle
+        const int hazardStall    = config.dataHazardStall();   // = aluLatency
+        const int baseCycles     = config.baseInstructionCycles(); // decode+execute (CISC pays extra)
+        const int cacheHitCost   = config.cacheHitCycles();    // cacheLatency + memBus
+        const int cacheMissCost  = config.cacheMissCycles();   // + ramLatency
+        const int memBus         = config.memoryBusLatency;    // per-op bus overhead
+        const int deviceLatency  = config.deviceLatency;       // polling idle per IO
 
-        // Derived parameters — computed once from config
-        const int branchPenalty   = config.branchPenalty();
-        const int hazardStall     = config.dataHazardStall();
-        const int baseCycles      = config.baseInstructionCycles();
-        const int cacheHitCost    = config.cacheHitCycles();
-        const int cacheMissCost   = config.cacheMissCycles();
-        const int deviceLatency   = config.deviceLatency;
+        // Pipeline startup cost (fill latency at beginning of program)
+        int startupCycles = config.pipelineStartupCycles();
 
         const std::vector<Instruction>& instr = workload.instructions;
-        int prevWasLoad = -1;  // id of previous LOAD (-1 = none)
+        int prevWasLoad = -1; // id of previous LOAD instruction (-1 = none)
+
+        int cycles        = startupCycles;
+        int stalls        = 0;
+        int idleCycles    = 0;
+        int memStalls     = 0;
+        int branchStalls  = 0;
+        int execCycles    = 0;
 
         for (size_t i = 0; i < instr.size(); ++i) {
             const Instruction& inst = instr[i];
 
-            // --- Branch penalty (pipelined CPUs only) ---
+            // ── Branch penalty (pipelined CPUs only) ──────────────────────
             if (inst.type == InstructionType::BRANCH && isPipeline) {
-                stalls += branchPenalty;
+                int bp = branchPenalty;
+                stalls       += bp;
+                branchStalls += bp;
             }
 
-            // --- Data hazard: use-after-load ---
+            // ── Data hazard: use-after-load ───────────────────────────────
             if (isPipeline && prevWasLoad >= 0) {
-                if (inst.type == InstructionType::ALU || inst.type == InstructionType::STORE) {
-                    if ((std::rand() % 100) < 30)
+                // 30 % chance of a RAW hazard on ALU/STORE following a LOAD
+                if (inst.type == InstructionType::ALU ||
+                    inst.type == InstructionType::STORE) {
+                    if ((std::rand() % 100) < 30) {
                         stalls += hazardStall;
+                    }
                 }
             }
             prevWasLoad = (inst.type == InstructionType::LOAD) ? inst.id : -1;
 
-            // --- Memory: cache hit/miss ---
-            if (inst.type == InstructionType::LOAD || inst.type == InstructionType::STORE) {
-                bool hit = cache_.accessMemory(inst.id, cacheType);
-                cycles += hit ? cacheHitCost : cacheMissCost;
+            // ── Memory: cache hit / miss ──────────────────────────────────
+            if (inst.type == InstructionType::LOAD ||
+                inst.type == InstructionType::STORE) {
+                bool hit = cache_.accessMemory(inst.id, config);
+                if (hit) {
+                    cycles += cacheHitCost;
+                } else {
+                    cycles    += cacheMissCost;
+                    memStalls += config.ramLatency; // miss stall
+                }
+                // Memory bus latency is always paid (included in hit/miss cost),
+                // but we also charge it explicitly for a STORE's address phase.
+                if (inst.type == InstructionType::STORE) {
+                    cycles += memBus;
+                }
             }
 
-            // --- I/O: polling vs DMA ---
+            // ── I/O: polling vs DMA ───────────────────────────────────────
             if (inst.type == InstructionType::IO) {
-                if (!config.useDMA)
+                if (!config.useDMA) {
                     idleCycles += deviceLatency;
+                }
+                // DMA: no CPU stall, but still costs base cycles to issue
             }
 
-            cycles += baseCycles;
+            // ── Base execute + decode ─────────────────────────────────────
+            cycles     += baseCycles;
+            execCycles += baseCycles;
         }
 
-        r.totalCycles    = cycles + stalls + idleCycles;
-        r.pipelineStalls = stalls;
-        r.cpuIdleCycles  = idleCycles;
-        r.cacheHits      = cache_.cacheHits;
-        r.cacheMisses    = cache_.cacheMisses;
+        r.totalCycles       = cycles + stalls + idleCycles;
+        r.pipelineStalls    = stalls;
+        r.cpuIdleCycles     = idleCycles;
+        r.cacheHits         = cache_.cacheHits;
+        r.cacheMisses       = cache_.cacheMisses;
+        r.memoryStallCycles = memStalls;
+        r.branchStallCycles = branchStalls;
+        r.ioStallCycles     = idleCycles;
+        r.executionCycles   = execCycles;
         r.cpi = (r.instructionsExecuted > 0)
             ? static_cast<double>(r.totalCycles) / r.instructionsExecuted
             : 0.0;

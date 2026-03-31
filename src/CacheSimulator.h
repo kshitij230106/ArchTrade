@@ -13,11 +13,17 @@
 
 /**
  * Tracks cache hits and misses for LOAD/STORE instructions.
- * Uses simple probabilistic model: Direct Mapped has lower hit rate than Set Associative.
+ *
+ * Hit probability is fully derived from ArchitectureConfig:
+ *   - cacheType: SetAssociative gets a higher base rate than DirectMapped
+ *   - cacheSizeKB: larger caches improve hit rate (capped at 95 %)
+ *
+ * The locality heuristic gives a second-chance hit on spatially adjacent
+ * addresses, mimicking sequential access patterns seen in real workloads.
  */
 class CacheSimulator {
 public:
-    int cacheHits = 0;
+    int cacheHits   = 0;
     int cacheMisses = 0;
 
     CacheSimulator() {
@@ -25,31 +31,32 @@ public:
     }
 
     /**
-     * Simulate a memory access. Returns true if hit, false if miss.
-     * Hit probability is higher for Set Associative caches.
+     * Simulate one memory access. Returns true if cache hit, false if miss.
+     *
+     * @param addressOrId  Instruction id used as a proxy address.
+     * @param config       Full architecture config (drives hit-rate calculation).
      */
-    bool accessMemory(int addressOrId, const std::string& cacheType) {
-        bool hit;
-        if (cacheType == "SetAssociative") {
-            // Set associative: higher base hit rate (~90%)
-            hit = (std::rand() % 100) < 90;
-        } else {
-            // Direct mapped: lower hit rate (~78%)
-            hit = (std::rand() % 100) < 78;
+    bool accessMemory(int addressOrId, const ArchitectureConfig& config) {
+        int hitRate = config.cacheHitRatePercent(); // 0-95 from config
+
+        bool hit = (std::rand() % 100) < hitRate;
+
+        // Spatial locality bonus: sequential IDs share a cache line → extra
+        // second-chance hit (simulates stride-1 access patterns).
+        if (!hit && (addressOrId % 8) < 3) {
+            hit = (std::rand() % 100) < 40;
         }
-        // Locality effect: repeated access to same cache block more likely a hit
-        if (!hit && (addressOrId % 8) == ((addressOrId / 8) % 8)) {
-            hit = (std::rand() % 100) < 50;
-        }
+
         if (hit)
-            cacheHits++;
+            ++cacheHits;
         else
-            cacheMisses++;
+            ++cacheMisses;
+
         return hit;
     }
 
     void reset() {
-        cacheHits = 0;
+        cacheHits   = 0;
         cacheMisses = 0;
     }
 };

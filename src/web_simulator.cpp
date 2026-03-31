@@ -7,7 +7,7 @@
 
 /**
  * Map high-level user choices onto ArchitectureConfig hardware parameters.
- * Hardware parameters passed as CLI args override defaults.
+ * Hardware parameters passed as CLI args override defaults set here.
  */
 static ArchitectureConfig buildConfig(
     const std::string& instructionSetStr,
@@ -23,6 +23,7 @@ static ArchitectureConfig buildConfig(
         config.aluLatency    = 1;
         config.decodeLatency = 1;
     } else {
+        // CISC: heavier decode, slightly longer execute
         config.isRISC        = false;
         config.aluLatency    = 1;
         config.decodeLatency = 2;
@@ -45,6 +46,7 @@ static ArchitectureConfig buildConfig(
         config.ramLatency       = 20;
         config.memoryBusLatency = 1;
     } else {
+        // DirectMapped
         config.cacheSizeKB      = 32;
         config.cacheLatency     = 2;
         config.ramLatency       = 20;
@@ -65,9 +67,13 @@ static ArchitectureConfig buildConfig(
 
 int main(int argc, char* argv[])
 {
-    if (argc < 12) {
+    // Args: workload isa pipeline cache io
+    //       cache_size cache_latency ram_latency mem_bus_latency
+    //       alu_latency decode_latency device_latency
+    if (argc < 13) {
         std::cout << "Usage: program workload instruction_set pipeline cache io"
-                  << " cacheSize cacheLatency ramLatency aluLatency decodeLatency deviceLatency\n";
+                  << " cacheSize cacheLatency ramLatency memBusLatency"
+                  << " aluLatency decodeLatency deviceLatency\n";
         return 1;
     }
 
@@ -80,13 +86,14 @@ int main(int argc, char* argv[])
     // Build base config from high-level choices
     ArchitectureConfig config = buildConfig(instructionSetStr, pipelineStr, cacheStr, ioStr);
 
-    // Override hardware parameters from CLI arguments
-    config.cacheSizeKB    = std::stoi(argv[6]);
-    config.cacheLatency   = std::stoi(argv[7]);
-    config.ramLatency     = std::stoi(argv[8]);
-    config.aluLatency     = std::stoi(argv[9]);
-    config.decodeLatency  = std::stoi(argv[10]);
-    config.deviceLatency  = std::stoi(argv[11]);
+    // Override all hardware parameters from CLI arguments
+    config.cacheSizeKB      = std::stoi(argv[6]);
+    config.cacheLatency     = std::stoi(argv[7]);
+    config.ramLatency       = std::stoi(argv[8]);
+    config.memoryBusLatency = std::stoi(argv[9]);
+    config.aluLatency       = std::stoi(argv[10]);
+    config.decodeLatency    = std::stoi(argv[11]);
+    config.deviceLatency    = std::stoi(argv[12]);
 
     // Build workload
     Workload w;
@@ -116,6 +123,10 @@ int main(int argc, char* argv[])
     std::cout << "Cache Hits: "            << r.cacheHits             << "\n";
     std::cout << "Cache Misses: "          << r.cacheMisses           << "\n";
     std::cout << "CPU Idle Cycles: "       << r.cpuIdleCycles         << "\n";
+    std::cout << "Memory Stall Cycles: "   << r.memoryStallCycles     << "\n";
+    std::cout << "Branch Stall Cycles: "   << r.branchStallCycles     << "\n";
+    std::cout << "IO Stall Cycles: "       << r.ioStallCycles         << "\n";
+    std::cout << "Execution Cycles: "      << r.executionCycles       << "\n";
 
     return 0;
 }

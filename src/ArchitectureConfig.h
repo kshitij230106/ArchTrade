@@ -50,21 +50,46 @@ struct ArchitectureConfig {
         return aluLatency;
     }
 
-    /** Base instruction cycles: decode + execute */
+    /**
+     * Base instruction cycles: decode + execute.
+     * CISC adds an extra decode pass (variable-length instruction overhead).
+     */
     int baseInstructionCycles() const {
         int cycles = decodeLatency + aluLatency;
         if (!isRISC) cycles += decodeLatency; // CISC extra decode overhead
         return cycles;
     }
 
-    /** Cache hit cost */
+    /** Cache hit cost: latency + bus overhead */
     int cacheHitCycles() const {
         return cacheLatency + memoryBusLatency;
     }
 
-    /** Cache miss cost */
+    /** Cache miss cost: latency + RAM penalty + bus overhead */
     int cacheMissCycles() const {
         return cacheLatency + ramLatency + memoryBusLatency;
+    }
+
+    /**
+     * Compute cache hit rate (0-100) based on cache type and size.
+     *  - SetAssociative has a higher base hit rate than DirectMapped.
+     *  - Larger caches increase the hit rate, capped at 95%.
+     */
+    int cacheHitRatePercent() const {
+        int base = (cacheType == "SetAssociative") ? 85 : 70;
+        int sizeBonus = cacheSizeKB / 16; // +1% per 16 KB
+        int rate = base + sizeBonus;
+        if (rate > 95) rate = 95;
+        return rate;
+    }
+
+    /**
+     * Pipeline startup overhead for first few instructions (pipelined CPUs only).
+     * Reflects pipeline fill latency.
+     */
+    int pipelineStartupCycles() const {
+        if (pipelineDepth <= 1) return 0;
+        return pipelineDepth - 1;
     }
 };
 
