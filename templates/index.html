@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArchTrade – Computer Architecture Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        /* ── Compare panel: side-by-side ── */
+        .compare-wrapper {
+            width: 100%;
+            max-width: 900px;
+        }
+        .compare-workload-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .compare-workload-row label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--slate-400);
+            white-space: nowrap;
+        }
+        .compare-workload-row select {
+            flex: 1;
+            padding: 0.75rem 2.75rem 0.75rem 1rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--slate-100);
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.9rem center;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .compare-workload-row select:focus {
+            outline: none;
+            border-color: var(--cyan-400);
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.3), 0 0 0 3px rgba(34,211,238,0.25);
+        }
+        .compare-cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .compare-col {
+            position: relative;
+            background: rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem 1.25rem;
+            overflow: hidden;
+        }
+        .compare-col-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--cyan-400);
+            margin-bottom: 1rem;
+        }
+        .compare-col label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--slate-400);
+        }
+        .compare-col label:first-of-type { margin-top: 0; }
+        .compare-col select,
+        .compare-col input[type="number"] {
+            width: 100%;
+            padding: 0.6rem 0.9rem;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--slate-100);
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            cursor: pointer;
+            appearance: none;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .compare-col select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.25rem;
+        }
+        .compare-col select:focus,
+        .compare-col input[type="number"]:focus {
+            outline: none;
+            border-color: var(--cyan-400);
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.3), 0 0 0 3px rgba(34,211,238,0.2);
+        }
+        .compare-section-divider {
+            margin: 1.1rem 0 0.5rem 0;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--violet-500);
+            border-top: 1px solid var(--glass-border);
+            padding-top: 0.9rem;
+        }
+        .compare-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+        /* wider content for compare mode */
+        .content.compare-active {
+            max-width: 900px;
+        }
+
+        /* ── Accordion ── */
+        .accordion {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin-top: 0.5rem;
+        }
+
+        .accordion-item {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px -8px rgba(0,0,0,0.4);
+            transition: border-color 0.3s;
+        }
+        .accordion-item:hover {
+            border-color: rgba(148,163,184,0.18);
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            user-select: none;
+            gap: 0.75rem;
+        }
+        .accordion-header:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .accordion-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--cyan-400);
+        }
+
+        .accordion-arrow {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--slate-500);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s;
+        }
+        .accordion-item.open .accordion-arrow {
+            transform: rotate(180deg);
+            color: var(--cyan-400);
+        }
+
+        .accordion-body {
+            display: none;
+            padding: 0 1.25rem 1.25rem 1.25rem;
+        }
+        .accordion-item.open .accordion-body {
+            display: block;
+        }
+
+        /* ── Chart layout inside accordion ── */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .chart-sub-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--slate-500);
+            margin-bottom: 0.5rem;
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 260px;
+        }
+        .chart-wrap-wide {
+            position: relative;
+            height: 280px;
+        }
+
+        /* zero-cache message */
+        .cache-empty-msg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--slate-500);
+            letter-spacing: 0.01em;
+            text-align: center;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="stage">
+        <!-- Animated blur blobs (nebula) -->
+        <div class="blob-layer" aria-hidden="true">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+            <div class="blob blob-3"></div>
+            <div class="blob blob-4"></div>
+            <div class="blob blob-5"></div>
+        </div>
+        <!-- Fine-grain noise overlay -->
+        <div class="noise" aria-hidden="true"></div>
+
+        <div class="content" id="mainContent">
+            <h1>ArchTrade</h1>
+            <p class="tagline">Computer Architecture Simulator</p>
+
+            <!-- ─── SINGLE SIM PANEL ─── -->
+            <div id="singlePanel">
+                <div class="artifact-tilt" id="artifactTilt">
+                    <div class="artifact-beam"></div>
+                    <div class="artifact">
+                        <form id="simForm">
+                            <label for="workload">Workload</label>
+                            <select id="workload" name="workload" required>
+                                <option value="fibonacci">Fibonacci</option>
+                                <option value="array_sum">Array Sum</option>
+                                <option value="bubble_sort">Bubble Sort</option>
+                                <option value="random_memory_access">Random Memory Access</option>
+                                <option value="io_processing">IO Processing</option>
+                            </select>
+
+                            <label for="instruction_set">Instruction Set</label>
+                            <select id="instruction_set" name="instruction_set" required>
+                                <option value="risc">RISC</option>
+                                <option value="cisc">CISC</option>
+                            </select>
+
+                            <label for="pipeline">Pipeline</label>
+                            <select id="pipeline" name="pipeline" required>
+                                <option value="single_cycle">Single Cycle</option>
+                                <option value="5_stage">5 Stage</option>
+                            </select>
+
+                            <label for="cache">Cache</label>
+                            <select id="cache" name="cache" required>
+                                <option value="DirectMapped">DirectMapped</option>
+                                <option value="SetAssociative">SetAssociative</option>
+                            </select>
+
+                            <label for="io_type">IO Method</label>
+                            <select id="io_type" name="io_type" required>
+                                <option value="polling">Polling</option>
+                                <option value="dma">DMA</option>
+                            </select>
+
+                            <div class="form-actions">
+                                <button type="submit" id="runBtn"><span>Run Simulation</span></button>
+                                <button type="button" id="compareBtn"><span>Compare Configurations</span></button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── COMPARE PANEL (hidden by default) ─── -->
+            <div id="comparePanel" style="display:none;" class="compare-wrapper">
+
+                <!-- Workload: shared, once at top -->
+                <div class="compare-workload-row">
+                    <label for="compare_workload">Workload</label>
+                    <select id="compare_workload">
+                        <option value="fibonacci">Fibonacci</option>
+                        <option value="array_sum">Array Sum</option>
+                        <option value="bubble_sort">Bubble Sort</option>
+                        <option value="random_memory_access">Random Memory Access</option>
+                        <option value="io_processing">IO Processing</option>
+                    </select>
+                </div>
+
+                <!-- Two columns side by side -->
+                <div class="compare-cols">
+
+                    <!-- Config A -->
+                    <div class="compare-col" id="colA">
+                        <div class="compare-col-label">Configuration A</div>
+
+                        <label for="isa_A">Instruction Set</label>
+                        <select id="isa_A">
+                            <option value="risc">RISC</option>
+                            <option value="cisc">CISC</option>
+                        </select>
+
+                        <label for="pipeline_A">Pipeline</label>
+                        <select id="pipeline_A">
+                            <option value="single_cycle">Single Cycle</option>
+                            <option value="5_stage">5 Stage</option>
+                        </select>
+
+                        <label for="cache_A">Cache</label>
+                        <select id="cache_A">
+                            <option value="DirectMapped">Direct Mapped</option>
+                            <option value="SetAssociative">Set Associative</option>
+                        </select>
+
+                        <label for="io_A">IO Method</label>
+                        <select id="io_A">
+                            <option value="polling">Polling</option>
+                            <option value="dma">DMA</option>
+                        </select>
+
+                        <div class="compare-section-divider">Hardware Parameters</div>
+
+                        <label for="cache_size_A">Cache Size (KB)</label>
+                        <input type="number" id="cache_size_A" value="32" min="1">
+
+                        <label for="cache_latency_A">Cache Latency (cycles)</label>
+                        <input type="number" id="cache_latency_A" value="2" min="1">
+
+                        <label for="ram_latency_A">RAM Latency (cycles)</label>
+                        <input type="number" id="ram_latency_A" value="20" min="1">
+
+                        <label for="mem_bus_latency_A">Memory Bus Latency</label>
+                        <input type="number" id="mem_bus_latency_A" value="1" min="0">
+
+                        <label for="alu_latency_A">ALU Latency (cycles)</label>
+                        <input type="number" id="alu_latency_A" value="1" min="1">
+
+                        <label for="decode_latency_A">Decode Latency (cycles)</label>
+                        <input type="number" id="decode_latency_A" value="1" min="1">
+
+                        <label for="device_latency_A">Device Latency (cycles)</label>
+                        <input type="number" id="device_latency_A" value="15" min="0">
+                    </div>
+
+                    <!-- Config B -->
+                    <div class="compare-col" id="colB">
+                        <div class="compare-col-label">Configuration B</div>
+
+                        <label for="isa_B">Instruction Set</label>
+                        <select id="isa_B">
+                            <option value="risc">RISC</option>
+                            <option value="cisc" selected>CISC</option>
+                        </select>
+
+                        <label for="pipeline_B">Pipeline</label>
+                        <select id="pipeline_B">
+                            <option value="single_cycle">Single Cycle</option>
+                            <option value="5_stage" selected>5 Stage</option>
+                        </select>
+
+                        <label for="cache_B">Cache</label>
+                        <select id="cache_B">
+                            <option value="DirectMapped">Direct Mapped</option>
+                            <option value="SetAssociative" selected>Set Associative</option>
+                        </select>
+
+                        <label for="io_B">IO Method</label>
+                        <select id="io_B">
+                            <option value="polling">Polling</option>
+                            <option value="dma" selected>DMA</option>
+                        </select>
+
+                        <div class="compare-section-divider">Hardware Parameters</div>
+
+                        <label for="cache_size_B">Cache Size (KB)</label>
+                        <input type="number" id="cache_size_B" value="64" min="1">
+
+                        <label for="cache_latency_B">Cache Latency (cycles)</label>
+                        <input type="number" id="cache_latency_B" value="2" min="1">
+
+                        <label for="ram_latency_B">RAM Latency (cycles)</label>
+                        <input type="number" id="ram_latency_B" value="20" min="1">
+
+                        <label for="mem_bus_latency_B">Memory Bus Latency</label>
+                        <input type="number" id="mem_bus_latency_B" value="1" min="0">
+
+                        <label for="alu_latency_B">ALU Latency (cycles)</label>
+                        <input type="number" id="alu_latency_B" value="1" min="1">
+
+                        <label for="decode_latency_B">Decode Latency (cycles)</label>
+                        <input type="number" id="decode_latency_B" value="1" min="1">
+
+                        <label for="device_latency_B">Device Latency (cycles)</label>
+                        <input type="number" id="device_latency_B" value="15" min="0">
+                    </div>
+                </div><!-- /compare-cols -->
+
+                <div class="compare-actions">
+                    <button type="button" id="runCompareBtn"
+                        style="position:relative;overflow:hidden;padding:0.8rem 1.75rem;font-family:inherit;font-size:0.95rem;font-weight:600;letter-spacing:-0.02em;color:#fff;border:none;border-radius:14px;cursor:pointer;background:linear-gradient(180deg,#6366f1 0%,#7c3aed 100%);transition:box-shadow 0.5s,transform 0.35s;">
+                        <span>Run Comparison</span>
+                    </button>
+                    <button type="button" id="cancelCompareBtn"
+                        style="position:relative;overflow:hidden;padding:0.8rem 1.75rem;font-family:inherit;font-size:0.95rem;font-weight:600;letter-spacing:-0.02em;color:var(--slate-400);border:1px solid rgba(148,163,184,0.2);border-radius:14px;cursor:pointer;background:rgba(100,116,139,0.25);transition:background 0.3s,transform 0.2s;">
+                        <span>Cancel</span>
+                    </button>
+                </div>
+            </div><!-- /comparePanel -->
+
+            <!-- ─── Single-run result ─── -->
+            <h2 id="singleResultTitle">Simulation results</h2>
+            <pre id="result">No results yet. Click "Run Simulation" to run.</pre>
+
+            <!-- ─── Comparison accordion ─── -->
+            <h2 id="compareTitle" style="display:none;">Configuration Comparison</h2>
+            <pre id="compareError" class="error" style="display:none;"></pre>
+
+            <div id="compareCharts" style="display:none;">
+                <div class="accordion">
+
+                    <!-- ① Core Performance -->
+                    <div class="accordion-item" id="acc-core">
+                        <div class="accordion-header" data-target="acc-core">
+                            <span class="accordion-title">▶ Core Performance</span>
+                            <span class="accordion-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            </span>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="charts-row">
+                                <div>
+                                    <div class="chart-sub-label">Total Cycles</div>
+                                    <div class="chart-wrap"><canvas id="chartCycles"></canvas></div>
+                                </div>
+                                <div>
+                                    <div class="chart-sub-label">CPI</div>
+                                    <div class="chart-wrap"><canvas id="chartCpi"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ② Pipeline Behavior -->
+                    <div class="accordion-item" id="acc-pipeline">
+                        <div class="accordion-header" data-target="acc-pipeline">
+                            <span class="accordion-title">▶ Pipeline Behavior</span>
+                            <span class="accordion-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            </span>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="charts-row">
+                                <div>
+                                    <div class="chart-sub-label">Pipeline Stalls</div>
+                                    <div class="chart-wrap"><canvas id="chartStalls"></canvas></div>
+                                </div>
+                                <div>
+                                    <div class="chart-sub-label">CPU Idle Cycles</div>
+                                    <div class="chart-wrap"><canvas id="chartIdle"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ③ Cache Analysis -->
+                    <div class="accordion-item" id="acc-cache">
+                        <div class="accordion-header" data-target="acc-cache">
+                            <span class="accordion-title">▶ Cache Analysis</span>
+                            <span class="accordion-arrow">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            </span>
+                        </div>
+                        <div class="accordion-body">
+                            <div id="cacheChartWrap">
+                                <div class="chart-sub-label">Cache Hits vs Cache Misses</div>
+                                <div class="chart-wrap-wide"><canvas id="chartCache"></canvas></div>
+                            </div>
+                            <div id="cacheEmptyMsg" class="cache-empty-msg" style="display:none;">
+                                No cache accesses occurred for this workload.
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /accordion -->
+            </div><!-- /compareCharts -->
+
+        </div>
+    </div>
+
+    <script>
+    (function () {
+
+        /* ── helpers ── */
+        function val(id)  { return document.getElementById(id).value; }
+        function num(id)  { return parseInt(document.getElementById(id).value, 10) || 0; }
+        function el(id)   { return document.getElementById(id); }
+
+        function friendlyLabel(raw) {
+            const map = {
+                fibonacci:            'Fibonacci',
+                array_sum:            'Array Sum',
+                bubble_sort:          'Bubble Sort',
+                random_memory_access: 'Random Memory Access',
+                io_processing:        'IO Processing',
+                risc:                 'RISC',
+                cisc:                 'CISC',
+                single_cycle:         'Single Cycle',
+                '5_stage':            '5 Stage',
+                DirectMapped:         'Direct Mapped',
+                SetAssociative:       'Set Associative',
+                polling:              'Polling',
+                dma:                  'DMA',
+            };
+            return map[raw] || raw;
+        }
+
+        function displayOrDash(v) {
+            return (v !== null && v !== undefined) ? String(v) : '—';
+        }
+
+        /* ── Accordion toggle ── */
+        document.querySelectorAll('.accordion-header').forEach(function (header) {
+            header.addEventListener('click', function () {
+                var targetId = header.getAttribute('data-target');
+                var item = document.getElementById(targetId);
+                var wasOpen = item.classList.contains('open');
+                item.classList.toggle('open');
+                /* update the ▶ / ▼ prefix in the title text */
+                var titleEl = header.querySelector('.accordion-title');
+                if (titleEl) {
+                    titleEl.textContent = titleEl.textContent.replace(/^[▶▼]\s*/, (wasOpen ? '▶ ' : '▼ '));
+                }
+            });
+        });
+
+        /* ── Chart.js global defaults ── */
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, sans-serif";
+        Chart.defaults.font.size = 11;
+
+        var COLOR_A        = 'rgba(99, 102, 241, 0.85)';
+        var COLOR_A_BORDER = 'rgba(99, 102, 241, 1)';
+        var COLOR_B        = 'rgba(34, 211, 238, 0.75)';
+        var COLOR_B_BORDER = 'rgba(34, 211, 238, 1)';
+        var COLOR_MISS_A   = 'rgba(248, 113, 113, 0.8)';
+        var COLOR_MISS_B   = 'rgba(248, 113, 113, 0.5)';
+
+        /* destroy-before-redraw registry */
+        var chartInstances = {};
+
+        function makeBarChart(canvasId, valueA, valueB) {
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+            var ctx = document.getElementById(canvasId).getContext('2d');
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Config A', 'Config B'],
+                    datasets: [{
+                        label: 'Value',
+                        data: [valueA, valueB],
+                        backgroundColor: [COLOR_A, COLOR_B],
+                        borderColor: [COLOR_A_BORDER, COLOR_B_BORDER],
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ' ' + (ctx.raw !== null ? ctx.raw : '—');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function makeCacheGroupedChart(canvasId, hitsA, hitsB, missesA, missesB) {
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+            var ctx = document.getElementById(canvasId).getContext('2d');
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Config A', 'Config B'],
+                    datasets: [
+                        {
+                            label: 'Cache Hits',
+                            data: [hitsA, hitsB],
+                            backgroundColor: [COLOR_A, COLOR_B],
+                            borderColor: [COLOR_A_BORDER, COLOR_B_BORDER],
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            borderSkipped: false,
+                        },
+                        {
+                            label: 'Cache Misses',
+                            data: [missesA, missesB],
+                            backgroundColor: [COLOR_MISS_A, COLOR_MISS_B],
+                            borderColor: ['rgba(248,113,113,1)', 'rgba(248,113,113,0.7)'],
+                            borderWidth: 1,
+                            borderRadius: 6,
+                            borderSkipped: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { color: '#94a3b8', boxWidth: 12 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ' ' + ctx.dataset.label + ': ' + (ctx.raw !== null ? ctx.raw : '—');
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function safeNum(v) {
+            return (v !== null && v !== undefined) ? v : 0;
+        }
+
+        /* helper: set accordion title prefix */
+        function setAccordionPrefix(itemId, open) {
+            var header = document.querySelector('#' + itemId + ' .accordion-title');
+            if (!header) return;
+            header.textContent = header.textContent.replace(/^[▶▼]\s*/, (open ? '▼ ' : '▶ '));
+        }
+
+        /* ── 3-D tilt ── */
+        var tiltEl = el('artifactTilt');
+        document.addEventListener('mousemove', function (e) {
+            if (!tiltEl || tiltEl.style.display === 'none') return;
+            var rect = tiltEl.getBoundingClientRect();
+            var x = (e.clientX - rect.left) / rect.width  - 0.5;
+            var y = (e.clientY - rect.top)  / rect.height - 0.5;
+            tiltEl.style.setProperty('--tilt-x', (-y * 8) + 'deg');
+            tiltEl.style.setProperty('--tilt-y', (x  * 8) + 'deg');
+        });
+        tiltEl && tiltEl.addEventListener('mouseleave', function () {
+            tiltEl.style.setProperty('--tilt-x', '0deg');
+            tiltEl.style.setProperty('--tilt-y', '0deg');
+        });
+
+        /* ── Run Simulation ── */
+        el('simForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            el('runBtn').disabled = true;
+            el('result').textContent = 'Running simulation…';
+            el('result').classList.remove('error');
+
+            var payload = {
+                workload:        val('workload'),
+                instruction_set: val('instruction_set'),
+                pipeline:        val('pipeline'),
+                cache:           val('cache'),
+                io_type:         val('io_type')
+            };
+
+            try {
+                var res  = await fetch('/run', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify(payload)
+                });
+                var data = await res.json();
+                if (data.ok) {
+                    el('result').textContent = data.output || '(No output)';
+                } else {
+                    el('result').textContent = (data.error || 'Error') +
+                        (data.output ? '\n\n' + data.output : '');
+                    el('result').classList.add('error');
+                }
+            } catch (err) {
+                el('result').textContent = 'Request failed: ' + err.message;
+                el('result').classList.add('error');
+            }
+            el('runBtn').disabled = false;
+        });
+
+        /* ── Show Compare Panel ── */
+        el('compareBtn').addEventListener('click', function () {
+            el('singlePanel').style.display    = 'none';
+            el('comparePanel').style.display   = 'block';
+            el('mainContent').classList.add('compare-active');
+            el('compareTitle').style.display   = 'none';
+            el('compareCharts').style.display  = 'none';
+            el('compareError').style.display   = 'none';
+            el('singleResultTitle').style.display = 'none';
+            el('result').style.display         = 'none';
+        });
+
+        /* ── Cancel Compare ── */
+        el('cancelCompareBtn').addEventListener('click', function () {
+            el('singlePanel').style.display    = 'block';
+            el('comparePanel').style.display   = 'none';
+            el('mainContent').classList.remove('compare-active');
+            el('compareTitle').style.display   = 'none';
+            el('compareCharts').style.display  = 'none';
+            el('compareError').style.display   = 'none';
+            el('singleResultTitle').style.display = 'block';
+            el('result').style.display         = 'block';
+        });
+
+        /* ── Run Comparison ── */
+        el('runCompareBtn').addEventListener('click', async function () {
+            el('runCompareBtn').disabled = true;
+            el('compareError').style.display   = 'none';
+            el('compareTitle').style.display   = 'none';
+            el('compareCharts').style.display  = 'none';
+
+            /* collapse all sections and reset prefixes */
+            ['acc-core', 'acc-pipeline', 'acc-cache'].forEach(function(id) {
+                el(id).classList.remove('open');
+                setAccordionPrefix(id, false);
+            });
+
+            var workload = val('compare_workload');
+
+            var configA = {
+                instruction_set:  val('isa_A'),
+                pipeline:         val('pipeline_A'),
+                cache:            val('cache_A'),
+                io_type:          val('io_A'),
+                cache_size:       num('cache_size_A'),
+                cache_latency:    num('cache_latency_A'),
+                ram_latency:      num('ram_latency_A'),
+                mem_bus_latency:  num('mem_bus_latency_A'),
+                alu_latency:      num('alu_latency_A'),
+                decode_latency:   num('decode_latency_A'),
+                device_latency:   num('device_latency_A')
+            };
+
+            var configB = {
+                instruction_set:  val('isa_B'),
+                pipeline:         val('pipeline_B'),
+                cache:            val('cache_B'),
+                io_type:          val('io_B'),
+                cache_size:       num('cache_size_B'),
+                cache_latency:    num('cache_latency_B'),
+                ram_latency:      num('ram_latency_B'),
+                mem_bus_latency:  num('mem_bus_latency_B'),
+                alu_latency:      num('alu_latency_B'),
+                decode_latency:   num('decode_latency_B'),
+                device_latency:   num('device_latency_B')
+            };
+
+            try {
+                var res = await fetch('/compare', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ workload, configA, configB })
+                });
+
+                if (!res.ok) throw new Error('Server returned ' + res.status);
+
+                var data = await res.json();
+                if (!data.ok) throw new Error(data.error || 'Comparison failed');
+
+                var A = data.A;
+                var B = data.B;
+
+                /* ── Core Performance ── */
+                makeBarChart('chartCycles', safeNum(A.cycles),        safeNum(B.cycles));
+                makeBarChart('chartCpi',    safeNum(A.cpi),           safeNum(B.cpi));
+
+                /* ── Pipeline Behavior ── */
+                makeBarChart('chartStalls', safeNum(A.pipelineStalls), safeNum(B.pipelineStalls));
+                makeBarChart('chartIdle',   safeNum(A.cpuIdleCycles),  safeNum(B.cpuIdleCycles));
+
+                /* ── Cache Analysis: zero-value guard ── */
+                var hitsA   = safeNum(A.cacheHits);
+                var hitsB   = safeNum(B.cacheHits);
+                var missesA = safeNum(A.cacheMisses);
+                var missesB = safeNum(B.cacheMisses);
+                var allZero = (hitsA === 0 && hitsB === 0 && missesA === 0 && missesB === 0);
+
+                if (allZero) {
+                    el('cacheChartWrap').style.display = 'none';
+                    el('cacheEmptyMsg').style.display  = 'flex';
+                } else {
+                    el('cacheChartWrap').style.display = 'block';
+                    el('cacheEmptyMsg').style.display  = 'none';
+                    makeCacheGroupedChart('chartCache', hitsA, hitsB, missesA, missesB);
+                }
+
+                /* show accordion container, auto-open first section */
+                el('compareTitle').style.display  = 'block';
+                el('compareCharts').style.display = 'block';
+                el('acc-core').classList.add('open');
+                setAccordionPrefix('acc-core', true);
+
+            } catch (err) {
+                el('compareError').textContent   = 'Comparison failed: ' + err.message;
+                el('compareError').style.display = 'block';
+            }
+
+            el('runCompareBtn').disabled = false;
+        });
+
+    })();
+    </script>
+</body>
+</html>
