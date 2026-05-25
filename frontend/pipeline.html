@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>ArchTrade Pipeline Visualizer</title>
+
+    <style>
+
+        body{
+            background:#0f172a;
+            color:white;
+            font-family:Arial;
+            text-align:center;
+            margin:0;
+            padding:20px;
+        }
+
+        h1{
+            margin-bottom:30px;
+        }
+
+        #cycleCounter{
+            font-size:24px;
+            margin-bottom:30px;
+            color:#38bdf8;
+        }
+
+        .pipeline{
+            display:flex;
+            justify-content:center;
+            gap:20px;
+            margin-top:40px;
+        }
+
+        .stage{
+            width:160px;
+            height:120px;
+            border-radius:15px;
+            padding:15px;
+            font-size:20px;
+            font-weight:bold;
+
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            align-items:center;
+
+            transition:0.5s;
+
+            box-shadow:0 0 20px rgba(255,255,255,0.2);
+
+            transform:scale(1);
+        }
+
+        .active{
+            transform:scale(1.1);
+            box-shadow:0 0 35px white;
+        }
+
+        .stall{
+            background:red !important;
+            animation:blink 0.5s infinite;
+        }
+
+        @keyframes blink{
+
+            0%{
+                opacity:1;
+            }
+
+            50%{
+                opacity:0.5;
+            }
+
+            100%{
+                opacity:1;
+            }
+
+        }
+
+        .stage-name{
+            font-size:18px;
+            margin-bottom:10px;
+        }
+
+        .instruction{
+            font-size:16px;
+            color:white;
+        }
+
+        #IF{
+            background:#2563eb;
+        }
+
+        #ID{
+            background:#7c3aed;
+        }
+
+        #EX{
+            background:#ea580c;
+        }
+
+        #MEM{
+            background:#16a34a;
+        }
+
+        #WB{
+            background:#db2777;
+        }
+
+        button{
+            margin-top:40px;
+            padding:12px 25px;
+            border:none;
+            border-radius:10px;
+            background:#38bdf8;
+            color:black;
+            font-size:18px;
+            cursor:pointer;
+            transition:0.3s;
+        }
+
+        button:hover{
+            background:white;
+            transform:scale(1.05);
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <h1>ArchTrade Pipeline Visualizer</h1>
+
+    <div id="cycleCounter">
+        Cycle: 0
+    </div>
+
+    <div class="pipeline">
+
+        <!-- IF Stage -->
+        <div class="stage" id="IF">
+
+            <div class="stage-name">
+                IF
+            </div>
+
+            <div class="instruction" id="ifText"></div>
+
+        </div>
+
+        <!-- ID Stage -->
+        <div class="stage" id="ID">
+
+            <div class="stage-name">
+                ID
+            </div>
+
+            <div class="instruction" id="idText"></div>
+
+        </div>
+
+        <!-- EX Stage -->
+        <div class="stage" id="EX">
+
+            <div class="stage-name">
+                EX
+            </div>
+
+            <div class="instruction" id="exText"></div>
+
+        </div>
+
+        <!-- MEM Stage -->
+        <div class="stage" id="MEM">
+
+            <div class="stage-name">
+                MEM
+            </div>
+
+            <div class="instruction" id="memText"></div>
+
+        </div>
+
+        <!-- WB Stage -->
+        <div class="stage" id="WB">
+
+            <div class="stage-name">
+                WB
+            </div>
+
+            <div class="instruction" id="wbText"></div>
+
+        </div>
+
+    </div>
+
+    <button onclick="startSimulation()">
+        Start Simulation
+    </button>
+
+    <script>
+
+        // Pipeline Data
+        const pipelineData = [
+
+            {
+                cycle:1,
+                IF:"ADD R1,R2,R3",
+                ID:"",
+                EX:"",
+                MEM:"",
+                WB:""
+            },
+
+            {
+                cycle:2,
+                IF:"SUB R4,R5,R6",
+                ID:"ADD R1,R2,R3",
+                EX:"",
+                MEM:"",
+                WB:""
+            },
+
+            {
+                cycle:3,
+                IF:"LW R7,0(R8)",
+                ID:"SUB R4,R5,R6",
+                EX:"ADD R1,R2,R3",
+                MEM:"",
+                WB:""
+            },
+
+            {
+                cycle:4,
+                IF:"MUL R9,R1,R2",
+                ID:"STALL",
+                EX:"SUB R4,R5,R6",
+                MEM:"ADD R1,R2,R3",
+                WB:""
+            },
+
+            {
+                cycle:5,
+                IF:"",
+                ID:"MUL R9,R1,R2",
+                EX:"LW R7,0(R8)",
+                MEM:"SUB R4,R5,R6",
+                WB:"ADD R1,R2,R3"
+            }
+
+        ];
+
+        let currentCycle = 0;
+
+        // Update Pipeline UI
+        function updatePipeline(data){
+
+            // Update Cycle Counter
+            document.getElementById("cycleCounter").innerHTML =
+                "Cycle: " + data.cycle;
+
+            // Update Instructions
+            document.getElementById("ifText").innerHTML = data.IF;
+            document.getElementById("idText").innerHTML = data.ID;
+            document.getElementById("exText").innerHTML = data.EX;
+            document.getElementById("memText").innerHTML = data.MEM;
+            document.getElementById("wbText").innerHTML = data.WB;
+
+            // Remove Previous Active Animations
+            const stages = document.querySelectorAll(".stage");
+
+            stages.forEach(stage => {
+                stage.classList.remove("active");
+                stage.classList.remove("stall");
+            });
+
+            // Stage Names
+            const stageNames = ["IF","ID","EX","MEM","WB"];
+
+            // Add Active / Stall Effects
+            stageNames.forEach(name => {
+
+                const stage = document.getElementById(name);
+
+                const value = data[name];
+
+                if(value){
+
+                    stage.classList.add("active");
+
+                }
+
+                if(value === "STALL"){
+
+                    stage.classList.add("stall");
+
+                }
+
+            });
+
+        }
+
+        // Start Simulation
+        function startSimulation(){
+
+            currentCycle = 0;
+
+            const interval = setInterval(() => {
+
+                if(currentCycle >= pipelineData.length){
+
+                    clearInterval(interval);
+
+                    return;
+
+                }
+
+                updatePipeline(
+                    pipelineData[currentCycle]
+                );
+
+                currentCycle++;
+
+            }, 1000);
+
+        }
+
+    </script>
+
+</body>
+
+</html>

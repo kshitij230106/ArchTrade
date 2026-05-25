@@ -1,89 +1,271 @@
 /**
  * ArchTrade - Educational Computer Architecture Simulator
- * Workload implementation: generates instruction sequences per workload type.
+ * Workload implementation:
+ * generates instruction streams for simulation.
  */
 
 #include "Workload.h"
-#include <cstdlib>
-#include <ctime>
 
-Workload Workload::create(WorkloadType type) {
-    std::srand(static_cast<unsigned>(std::time(nullptr)));
-    std::vector<Instruction> instr;
+#include <random>
+
+/**
+ * Create standard workloads.
+ */
+Workload Workload::create(WorkloadType type)
+{
+    std::vector<Instruction> instructions;
+
     std::string name;
 
-    switch (type) {
-    case WorkloadType::Fibonacci: {
+    int id = 0;
+
+    // Random generator
+    std::mt19937 rng(std::random_device{}());
+
+    // =====================================================
+    // Fibonacci
+    // =====================================================
+
+    if (type == WorkloadType::Fibonacci) {
+
         name = "Fibonacci (branch heavy)";
+
         const int loopIterations = 80;
-        int id = 0;
+
         for (int i = 0; i < loopIterations; ++i) {
-            instr.push_back({ InstructionType::ALU,    id++ });
-            instr.push_back({ InstructionType::BRANCH, id++ });
-            instr.push_back({ InstructionType::ALU,    id++ });
-            instr.push_back({ InstructionType::BRANCH, id++ });
-            // Occasional IO to demonstrate idle cycle behavior
-            if (i % 20 == 19)
-                instr.push_back({ InstructionType::IO, id++ });
+
+            Instruction alu1(
+                InstructionType::ALU,
+                id++
+            );
+
+            alu1.destinationRegister = 1;
+            alu1.sourceRegister1 = 0;
+
+            instructions.push_back(alu1);
+
+            Instruction branch1(
+                InstructionType::BRANCH,
+                id++
+            );
+
+            branch1.branchTaken =
+                (i % 2 == 0);
+
+            instructions.push_back(branch1);
+
+            Instruction alu2(
+                InstructionType::ALU,
+                id++
+            );
+
+            alu2.destinationRegister = 2;
+            alu2.sourceRegister1 = 1;
+
+            instructions.push_back(alu2);
+
+            Instruction branch2(
+                InstructionType::BRANCH,
+                id++
+            );
+
+            branch2.branchTaken =
+                (i % 3 == 0);
+
+            instructions.push_back(branch2);
+
+            // Occasional I/O
+            if (i % 20 == 19) {
+
+                Instruction ioInst(
+                    InstructionType::IO,
+                    id++
+                );
+
+                instructions.push_back(ioInst);
+            }
         }
-        instr.push_back({ InstructionType::IO, id++ });
-        break;
+
+        Instruction finalIO(
+            InstructionType::IO,
+            id++
+        );
+
+        instructions.push_back(finalIO);
     }
-    case WorkloadType::ArraySum: {
+
+    // =====================================================
+    // Array Sum
+    // =====================================================
+
+    else if (type == WorkloadType::ArraySum) {
+
         name = "Array Sum (good cache locality)";
+
         const int arraySize = 200;
-        int id = 0;
+
         for (int i = 0; i < arraySize; ++i) {
-            instr.push_back({ InstructionType::LOAD, id++ });
-            instr.push_back({ InstructionType::ALU,  id++ });
+
+            Instruction load(
+                InstructionType::LOAD,
+                id++
+            );
+
+            load.memoryAddress = i;
+
+            instructions.push_back(load);
+
+            Instruction alu(
+                InstructionType::ALU,
+                id++
+            );
+
+            alu.destinationRegister = 1;
+            alu.sourceRegister1 = 0;
+
+            instructions.push_back(alu);
         }
-        instr.push_back({ InstructionType::STORE, id++ });
-        instr.push_back({ InstructionType::IO,    id++ }); // output result
-        break;
-    }
+
+        Instruction store(
+            InstructionType::STORE,
+            id++
+        );
+
+        store.memoryAddress = arraySize;
+
+        instructions.push_back(store);
+
+        Instruction ioInst(
+            InstructionType::IO,
+            id++
+        );
+
+        instructions.push_back(ioInst);
     }
 
-    return Workload(name, std::move(instr));
+    return Workload(
+        name,
+        std::move(instructions)
+    );
 }
 
-Workload Workload::createBubbleSort() {
-    Workload w("Bubble Sort (branch + memory heavy)");
-    for (int i = 0; i < 120; i++) {
-        w.addInstruction(InstructionType::LOAD);
-        w.addInstruction(InstructionType::LOAD);
-        w.addInstruction(InstructionType::ALU);
-        w.addInstruction(InstructionType::BRANCH);
-        w.addInstruction(InstructionType::STORE);
-        // Occasional IO: e.g. progress output every 30 iterations
-        if (i % 30 == 29)
-            w.addInstruction(InstructionType::IO);
+/**
+ * Bubble Sort workload.
+ */
+Workload Workload::createBubbleSort()
+{
+    Workload workload(
+        "Bubble Sort (branch + memory heavy)"
+    );
+
+    for (int i = 0; i < 120; ++i) {
+
+        workload.addInstruction(
+            InstructionType::LOAD
+        );
+
+        workload.addInstruction(
+            InstructionType::LOAD
+        );
+
+        workload.addInstruction(
+            InstructionType::ALU
+        );
+
+        workload.addInstruction(
+            InstructionType::BRANCH
+        );
+
+        workload.addInstruction(
+            InstructionType::STORE
+        );
+
+        // Periodic I/O
+        if (i % 30 == 29) {
+
+            workload.addInstruction(
+                InstructionType::IO
+            );
+        }
     }
-    return w;
+
+    return workload;
 }
 
-Workload Workload::createRandomMemory() {
-    Workload w("Random Memory Access (poor cache locality)");
-    for (int i = 0; i < 150; i++) {
-        w.addInstruction(InstructionType::LOAD);
-        w.addInstruction(InstructionType::ALU);
-        w.addInstruction(InstructionType::LOAD);
-        w.addInstruction(InstructionType::ALU);
-        w.addInstruction(InstructionType::LOAD);
-        // Periodic IO to show DMA vs polling difference
-        if (i % 25 == 24)
-            w.addInstruction(InstructionType::IO);
+/**
+ * Random memory workload.
+ */
+Workload Workload::createRandomMemory()
+{
+    Workload workload(
+        "Random Memory Access (poor cache locality)"
+    );
+
+    for (int i = 0; i < 150; ++i) {
+
+        workload.addInstruction(
+            InstructionType::LOAD
+        );
+
+        workload.addInstruction(
+            InstructionType::ALU
+        );
+
+        workload.addInstruction(
+            InstructionType::LOAD
+        );
+
+        workload.addInstruction(
+            InstructionType::ALU
+        );
+
+        workload.addInstruction(
+            InstructionType::LOAD
+        );
+
+        // Periodic I/O
+        if (i % 25 == 24) {
+
+            workload.addInstruction(
+                InstructionType::IO
+            );
+        }
     }
-    return w;
+
+    return workload;
 }
 
-Workload Workload::createIOProcessing() {
-    Workload w("I/O Processing (I/O heavy)");
-    for (int i = 0; i < 100; i++) {
-        w.addInstruction(InstructionType::ALU);
-        w.addInstruction(InstructionType::IO);
-        w.addInstruction(InstructionType::IO);
-        w.addInstruction(InstructionType::LOAD);
-        w.addInstruction(InstructionType::IO);
+/**
+ * I/O-heavy workload.
+ */
+Workload Workload::createIOProcessing()
+{
+    Workload workload(
+        "I/O Processing (I/O heavy)"
+    );
+
+    for (int i = 0; i < 100; ++i) {
+
+        workload.addInstruction(
+            InstructionType::ALU
+        );
+
+        workload.addInstruction(
+            InstructionType::IO
+        );
+
+        workload.addInstruction(
+            InstructionType::IO
+        );
+
+        workload.addInstruction(
+            InstructionType::LOAD
+        );
+
+        workload.addInstruction(
+            InstructionType::IO
+        );
     }
-    return w;
+
+    return workload;
 }

@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ArchTrade - Correct Pipeline Simulator</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+        }
+
+        body{
+            background:#0f172a;
+            color:white;
+            font-family:Arial, sans-serif;
+            overflow-x:hidden;
+        }
+
+        .container{
+            width:90%;
+            max-width:1300px;
+            margin:auto;
+            padding:40px 0;
+        }
+
+        h1{
+            text-align:center;
+            font-size:60px;
+            color:#38bdf8;
+            margin-bottom:10px;
+        }
+
+        .tagline{
+            text-align:center;
+            color:#cbd5e1;
+            margin-bottom:40px;
+        }
+
+        h2{
+            margin-top:50px;
+            margin-bottom:20px;
+            color:#38bdf8;
+        }
+
+        .card{
+            background:#1e293b;
+            padding:30px;
+            border-radius:20px;
+            box-shadow:0 0 20px rgba(255,255,255,0.08);
+        }
+
+        label{
+            display:block;
+            margin-top:20px;
+            margin-bottom:8px;
+            font-weight:bold;
+        }
+
+        select{
+            width:100%;
+            padding:12px;
+            border:none;
+            border-radius:10px;
+            background:#334155;
+            color:white;
+            font-size:16px;
+        }
+
+        button{
+            padding:12px 24px;
+            border:none;
+            border-radius:10px;
+            background:#38bdf8;
+            color:black;
+            font-weight:bold;
+            cursor:pointer;
+            transition:0.3s;
+        }
+
+        button:hover{
+            background:white;
+            transform:scale(1.05);
+        }
+
+        .button-group{
+            display:flex;
+            gap:15px;
+            flex-wrap:wrap;
+            margin-top:30px;
+        }
+
+        pre{
+            background:#1e293b;
+            padding:20px;
+            border-radius:15px;
+            line-height:1.8;
+            white-space:pre-wrap;
+            overflow:auto;
+        }
+
+        /* =====================================
+           PIPELINE
+        ===================================== */
+
+        #cycleCounter{
+            text-align:center;
+            font-size:28px;
+            margin-top:30px;
+            color:#38bdf8;
+        }
+
+        .pipeline{
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            gap:15px;
+            flex-wrap:wrap;
+            margin-top:40px;
+        }
+
+        .stage-box{
+            width:180px;
+            height:140px;
+            border-radius:15px;
+            padding:15px;
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            align-items:center;
+            transition:0.5s;
+            box-shadow:0 0 20px rgba(255,255,255,0.2);
+            color:white;
+        }
+
+        .stage-title{
+            font-size:24px;
+            font-weight:bold;
+            margin-bottom:15px;
+        }
+
+        .instruction{
+            text-align:center;
+            font-size:15px;
+            animation:floatInstruction 0.5s ease;
+        }
+
+        @keyframes floatInstruction{
+
+            0%{
+                transform:translateY(-15px);
+                opacity:0;
+            }
+
+            100%{
+                transform:translateY(0);
+                opacity:1;
+            }
+
+        }
+
+        .arrow{
+            font-size:40px;
+            color:#38bdf8;
+        }
+
+        #IF{
+            background:#2563eb;
+        }
+
+        #ID{
+            background:#7c3aed;
+        }
+
+        #EX{
+            background:#ea580c;
+        }
+
+        #MEM{
+            background:#16a34a;
+        }
+
+        #WB{
+            background:#db2777;
+        }
+
+        .active{
+            transform:scale(1.08);
+            box-shadow:0 0 35px white;
+        }
+
+        .stall{
+            background:red !important;
+            animation:blink 0.5s infinite;
+        }
+
+        .bubble{
+            background:gray !important;
+        }
+
+        @keyframes blink{
+
+            0%{
+                opacity:1;
+            }
+
+            50%{
+                opacity:0.5;
+            }
+
+            100%{
+                opacity:1;
+            }
+
+        }
+
+        /* =====================================
+           TIMELINE TABLE
+        ===================================== */
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:40px;
+        }
+
+        th, td{
+            border:1px solid white;
+            padding:10px;
+            text-align:center;
+        }
+
+        th{
+            background:#1e293b;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>ArchTrade</h1>
+
+        <p class="tagline">
+            Correct 5-Stage Pipeline Visualization
+        </p>
+
+        <!-- =====================================
+             SIMULATION RESULTS
+        ===================================== -->
+
+        <h2>Simulation Results</h2>
+
+        <pre id="resultOutput">
+Instructions Executed: 4
+Pipeline Type: 5 Stage
+Hazard Detection: Enabled
+Forwarding: Disabled
+        </pre>
+
+        <!-- =====================================
+             PIPELINE CONTROLS
+        ===================================== -->
+
+        <h2>Pipeline Controls</h2>
+
+        <div class="button-group">
+
+            <button onclick="startSimulation()">
+                ▶ Start
+            </button>
+
+            <button onclick="pauseSimulation()">
+                ⏸ Pause
+            </button>
+
+            <button onclick="nextCycle()">
+                ⏭ Next
+            </button>
+
+            <button onclick="resetSimulation()">
+                🔄 Reset
+            </button>
+
+        </div>
+
+        <!-- =====================================
+             CYCLE COUNTER
+        ===================================== -->
+
+        <div id="cycleCounter">
+            Cycle: 0
+        </div>
+
+        <!-- =====================================
+             PIPELINE
+        ===================================== -->
+
+        <div class="pipeline">
+
+            <div class="stage-box" id="IF">
+                <div class="stage-title">IF</div>
+                <div class="instruction" id="ifText"></div>
+            </div>
+
+            <div class="arrow">➜</div>
+
+            <div class="stage-box" id="ID">
+                <div class="stage-title">ID</div>
+                <div class="instruction" id="idText"></div>
+            </div>
+
+            <div class="arrow">➜</div>
+
+            <div class="stage-box" id="EX">
+                <div class="stage-title">EX</div>
+                <div class="instruction" id="exText"></div>
+            </div>
+
+            <div class="arrow">➜</div>
+
+            <div class="stage-box" id="MEM">
+                <div class="stage-title">MEM</div>
+                <div class="instruction" id="memText"></div>
+            </div>
+
+            <div class="arrow">➜</div>
+
+            <div class="stage-box" id="WB">
+                <div class="stage-title">WB</div>
+                <div class="instruction" id="wbText"></div>
+            </div>
+
+        </div>
+
+        <!-- =====================================
+             TIMELINE TABLE
+        ===================================== -->
+
+        <h2>Pipeline Timeline</h2>
+
+        <table id="timelineTable">
+
+            <thead>
+
+                <tr id="timelineHeader">
+
+                    <th>Instruction</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="timelineBody">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <script>
+
+        // =====================================
+        // INSTRUCTIONS
+        // =====================================
+
+        const instructions = [
+
+            "LW R1,R2",
+            "ADD R3,R1,R4",
+            "SUB R5,R3,R6",
+            "MUL R7,R5,R8"
+
+        ];
+
+        // =====================================
+        // PIPELINE REGISTERS
+        // =====================================
+
+        let pipeline = {
+
+            IF:"",
+            ID:"",
+            EX:"",
+            MEM:"",
+            WB:""
+
+        };
+
+        let pc = 0;
+
+        let cycle = 0;
+
+        let simulationInterval;
+
+        let timeline = {};
+
+        // =====================================
+        // INITIALIZE TIMELINE
+        // =====================================
+
+        instructions.forEach(inst => {
+
+            timeline[inst] = [];
+
+        });
+
+        // =====================================
+        // PARSE INSTRUCTION
+        // =====================================
+
+        function parseInstruction(inst){
+
+            if(inst === "" || inst === "STALL"){
+
+                return null;
+
+            }
+
+            const parts = inst.split(" ");
+
+            const opcode = parts[0];
+
+            const regs = parts[1]
+                .split(",");
+
+            return {
+
+                opcode: opcode,
+
+                dest: regs[0],
+
+                src1: regs[1],
+
+                src2: regs[2]
+
+            };
+
+        }
+
+        // =====================================
+        // RAW HAZARD CHECK
+        // =====================================
+
+        function hasHazard(){
+
+            const idInst =
+                parseInstruction(pipeline.ID);
+
+            const exInst =
+                parseInstruction(pipeline.EX);
+
+            if(!idInst || !exInst){
+
+                return false;
+
+            }
+
+            if(
+
+                exInst.dest &&
+                (
+                    idInst.src1 === exInst.dest
+                    ||
+                    idInst.src2 === exInst.dest
+                )
+
+            ){
+
+                return true;
+
+            }
+
+            return false;
+
+        }
+
+        // =====================================
+        // UPDATE TIMELINE
+        // =====================================
+
+        function updateTimeline(){
+
+            for(const stage in pipeline){
+
+                const inst = pipeline[stage];
+
+                if(
+
+                    inst !== ""
+                    &&
+                    inst !== "STALL"
+
+                ){
+
+                    timeline[inst].push(stage);
+
+                }
+
+            }
+
+            renderTimeline();
+
+        }
+
+        // =====================================
+        // RENDER TIMELINE
+        // =====================================
+
+        function renderTimeline(){
+
+            const header =
+                document.getElementById(
+                    "timelineHeader"
+                );
+
+            header.innerHTML =
+                "<th>Instruction</th>";
+
+            for(let i=1;i<=cycle;i++){
+
+                header.innerHTML +=
+                    `<th>${i}</th>`;
+
+            }
+
+            const body =
+                document.getElementById(
+                    "timelineBody"
+                );
+
+            body.innerHTML = "";
+
+            instructions.forEach(inst => {
+
+                let row =
+                    `<tr><td>${inst}</td>`;
+
+                for(let i=0;i<cycle;i++){
+
+                    row +=
+                        `<td>${timeline[inst][i] || ""}</td>`;
+
+                }
+
+                row += "</tr>";
+
+                body.innerHTML += row;
+
+            });
+
+        }
+
+        // =====================================
+        // RENDER PIPELINE
+        // =====================================
+
+        function renderPipeline(){
+
+            document.getElementById("cycleCounter")
+            .innerHTML =
+                "Cycle: " + cycle;
+
+            document.getElementById("ifText")
+            .innerHTML = pipeline.IF;
+
+            document.getElementById("idText")
+            .innerHTML = pipeline.ID;
+
+            document.getElementById("exText")
+            .innerHTML = pipeline.EX;
+
+            document.getElementById("memText")
+            .innerHTML = pipeline.MEM;
+
+            document.getElementById("wbText")
+            .innerHTML = pipeline.WB;
+
+            const stages =
+                document.querySelectorAll(".stage-box");
+
+            stages.forEach(stage => {
+
+                stage.classList.remove("active");
+                stage.classList.remove("stall");
+                stage.classList.remove("bubble");
+
+            });
+
+            const stageNames =
+                ["IF","ID","EX","MEM","WB"];
+
+            stageNames.forEach(name => {
+
+                const stage =
+                    document.getElementById(name);
+
+                const value =
+                    pipeline[name];
+
+                if(value){
+
+                    stage.classList.add("active");
+
+                }
+
+                if(value === "STALL"){
+
+                    stage.classList.add("stall");
+
+                }
+
+                if(value === "BUBBLE"){
+
+                    stage.classList.add("bubble");
+
+                }
+
+            });
+
+        }
+
+        // =====================================
+        // ADVANCE PIPELINE
+        // =====================================
+
+        function advancePipeline(){
+
+            cycle++;
+
+            // =====================================
+            // HAZARD DETECTION
+            // =====================================
+
+            const hazard =
+                hasHazard();
+
+            // =====================================
+            // NORMAL SHIFT
+            // =====================================
+
+            pipeline.WB = pipeline.MEM;
+
+            pipeline.MEM = pipeline.EX;
+
+            if(hazard){
+
+                pipeline.EX = "BUBBLE";
+
+            }
+
+            else{
+
+                pipeline.EX = pipeline.ID;
+
+                pipeline.ID = pipeline.IF;
+
+                // FETCH NEW INSTRUCTION
+
+                if(pc < instructions.length){
+
+                    pipeline.IF =
+                        instructions[pc];
+
+                    pc++;
+
+                }
+
+                else{
+
+                    pipeline.IF = "";
+
+                }
+
+            }
+
+            renderPipeline();
+
+            updateTimeline();
+
+            // =====================================
+            // STOP CONDITION
+            // =====================================
+
+            if(
+
+                pc >= instructions.length
+                &&
+
+                pipeline.IF === ""
+                &&
+
+                pipeline.ID === ""
+                &&
+
+                pipeline.EX === ""
+                &&
+
+                pipeline.MEM === ""
+                &&
+
+                pipeline.WB === ""
+
+            ){
+
+                clearInterval(simulationInterval);
+
+            }
+
+        }
+
+        // =====================================
+        // START
+        // =====================================
+
+        function startSimulation(){
+
+            clearInterval(simulationInterval);
+
+            simulationInterval = setInterval(() => {
+
+                advancePipeline();
+
+            },1000);
+
+        }
+
+        // =====================================
+        // PAUSE
+        // =====================================
+
+        function pauseSimulation(){
+
+            clearInterval(simulationInterval);
+
+        }
+
+        // =====================================
+        // NEXT CYCLE
+        // =====================================
+
+        function nextCycle(){
+
+            advancePipeline();
+
+        }
+
+        // =====================================
+        // RESET
+        // =====================================
+
+        function resetSimulation(){
+
+            clearInterval(simulationInterval);
+
+            pipeline = {
+
+                IF:"",
+                ID:"",
+                EX:"",
+                MEM:"",
+                WB:""
+
+            };
+
+            pc = 0;
+
+            cycle = 0;
+
+            instructions.forEach(inst => {
+
+                timeline[inst] = [];
+
+            });
+
+            renderPipeline();
+
+            renderTimeline();
+
+        }
+
+        // =====================================
+        // INITIAL RENDER
+        // =====================================
+
+        renderPipeline();
+
+        renderTimeline();
+
+    </script>
+
+</body>
+
+</html>

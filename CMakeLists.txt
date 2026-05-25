@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
-project(ArchTrade LANGUAGES CXX)
+
+project(ArchTrade)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(ArchTrade
-  src/main.cpp
-  src/Workload.cpp
-)
+add_executable(ArchTrade_web
 
-target_include_directories(ArchTrade PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    src/web_simulator.cpp
+    src/Workload.cpp
+)

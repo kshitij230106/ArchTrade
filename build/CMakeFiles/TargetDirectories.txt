@@ -1,0 +1,3 @@
+C:/Users/win 10/OneDrive/Desktop/ArchTrade-main/build/CMakeFiles/ArchTrade_web.dir
+C:/Users/win 10/OneDrive/Desktop/ArchTrade-main/build/CMakeFiles/edit_cache.dir
+C:/Users/win 10/OneDrive/Desktop/ArchTrade-main/build/CMakeFiles/rebuild_cache.dir
