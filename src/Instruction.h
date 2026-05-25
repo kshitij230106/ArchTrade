@@ -1,21 +1,35 @@
 /**
  * ArchTrade - Educational Computer Architecture Simulator
+<<<<<<< HEAD
  * Instruction representation and instruction metadata.
+=======
+ * Instruction types and representation for simplified program simulation.
+>>>>>>> fe6656cc5573ce4a019edd25d5b2d55b50053d6c
  */
 
 #ifndef ARCHTRADE_INSTRUCTION_H
 #define ARCHTRADE_INSTRUCTION_H
 
+<<<<<<< HEAD
 #include <string>
 
 /**
  * Types of instructions in the simplified ISA.
+=======
+/**
+ * Types of instructions in our simplified ISA.
+ * ALU: arithmetic/logic (add, sub, etc.)
+ * LOAD/STORE: memory access
+ * BRANCH: conditional jumps (cause pipeline penalty)
+ * IO: I/O operations (polling vs DMA)
+>>>>>>> fe6656cc5573ce4a019edd25d5b2d55b50053d6c
  */
 enum class InstructionType {
     ALU,
     LOAD,
     STORE,
     BRANCH,
+<<<<<<< HEAD
     IO,
     NOP
 };
@@ -28,11 +42,15 @@ enum class HazardType {
     DATA,
     CONTROL,
     STRUCTURAL
+=======
+    IO
+>>>>>>> fe6656cc5573ce4a019edd25d5b2d55b50053d6c
 };
 
 /**
  * Represents a single instruction in the simulated program.
  */
+<<<<<<< HEAD
 class Instruction {
 public:
 
@@ -195,6 +213,11 @@ public:
                 return "UNKNOWN";
         }
     }
+=======
+struct Instruction {
+    InstructionType type;
+    int id;  // Unique id for hazard detection (e.g. same "address" = potential hazard)
+>>>>>>> fe6656cc5573ce4a019edd25d5b2d55b50053d6c
 };
 
 #endif // ARCHTRADE_INSTRUCTION_H
